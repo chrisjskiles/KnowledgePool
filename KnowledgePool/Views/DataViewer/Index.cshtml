@@ -1,0 +1,244 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+
+@model IEnumerable<KnowledgePool.Models.Card>
+
+@using System.Linq
+@using System.Text.Json
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@{
+    ViewBag.Title = "Data Viewer";
+}
+
+<h2>Set Search</h2>
+<p>
+    @using (Html.BeginForm("Index", "DataViewer", FormMethod.Get))
+    {
+        <p>
+            Set: @Html.DropDownList("setList")
+            <input type="submit" value="Submit">
+
+            Title: @Html.TextBox("searchString")
+            <input type="submit" value="Filter">
+        </p>
+    }
+</p>
+
+@{
+    var creatureCounts = ViewData["CreatureCounts"] as IDictionary<Tuple<string, int>, int>;
+    var averages = ViewData["CardAverages"] as IDictionary<Tuple<string, int>, Tuple<double, double>>;
+    var medians = ViewData["CardMedians"] as IDictionary<Tuple<string, int>, Tuple<int, int>>;
+
+    var colorKeys = new List<string> { "W", "U", "B", "R", "G", "M", "C", "O" };
+}
+
+<div>
+    <canvas id="averageLine"></canvas>
+    <div>
+        <a id="a0" class="chart-action" onclick="toggleAverageData(this)">Toggle White</a>
+        <a id="a1" class="chart-action" onclick="toggleAverageData(this)">Toggle Blue</a>
+        <a id="a2" class="chart-action" onclick="toggleAverageData(this)">Toggle Black</a>
+        <a id="a3" class="chart-action" onclick="toggleAverageData(this)">Toggle Red</a>
+        <a id="a4" class="chart-action" onclick="toggleAverageData(this)">Toggle Green</a>
+        <a id="a5" class="chart-action" onclick="toggleAverageData(this)">Toggle Gold</a>
+        <a id="a6" class="chart-action" onclick="toggleAverageData(this)">Toggle Colorless</a>
+        <a id="a7" class="chart-action" onclick="toggleAverageData(this)">Toggle Overall</a>
+    </div>
+</div>
+
+<br/><br/>
+
+<div>
+    <canvas id="medianLine"></canvas>
+    <div>
+        <a id="m0" class="chart-action" onclick="toggleMedianData(this)">Toggle White</a>
+        <a id="m1" class="chart-action" onclick="toggleMedianData(this)">Toggle Blue</a>
+        <a id="m2" class="chart-action" onclick="toggleMedianData(this)">Toggle Black</a>
+        <a id="m3" class="chart-action" onclick="toggleMedianData(this)">Toggle Red</a>
+        <a id="m4" class="chart-action" onclick="toggleMedianData(this)">Toggle Green</a>
+        <a id="m5" class="chart-action" onclick="toggleMedianData(this)">Toggle Gold</a>
+        <a id="m6" class="chart-action" onclick="toggleMedianData(this)">Toggle Colorless</a>
+        <a id="m7" class="chart-action" onclick="toggleMedianData(this)">Toggle Overall</a>
+    </div>
+</div>
+
+<br /><br />
+
+<div>
+    <canvas id="scatter"></canvas>
+    <div>
+        <a id="s0" class="chart-action" onclick="toggleScatterData(this)">Toggle White</a>
+        <a id="s1" class="chart-action" onclick="toggleScatterData(this)">Toggle Blue</a>
+        <a id="s2" class="chart-action" onclick="toggleScatterData(this)">Toggle Black</a>
+        <a id="s3" class="chart-action" onclick="toggleScatterData(this)">Toggle Red</a>
+        <a id="s4" class="chart-action" onclick="toggleScatterData(this)">Toggle Green</a>
+        <a id="s5" class="chart-action" onclick="toggleScatterData(this)">Toggle Gold</a>
+        <a id="s6" class="chart-action" onclick="toggleScatterData(this)">Toggle Colorless</a>
+        <a id="s7" class="chart-action" onclick="toggleScatterData(this)">Toggle Overall</a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="text/javascript">
+
+    const averageChart = document.getElementById("averageLine");
+    const averageChartJson = JSON.parse('@Html.Raw(ViewData["OverallAverage"])');
+    new Chart(averageChart, averageChartJson);
+
+    const medianChart = document.getElementById("medianLine");
+    const medianChartJson = JSON.parse('@Html.Raw(ViewData["OverallMedian"])');
+    new Chart(medianChart, medianChartJson);
+
+    const scatterPlotCanvas = document.getElementById("scatter");
+    const scatterPlotJson = JSON.parse('@Html.Raw(ViewData["ScatterData"])');
+    const scatterPlot = new Chart(scatterPlotCanvas, scatterPlotJson);
+
+    function toggleScatterData(elem) {
+        const index = parseInt(elem.id[1]);
+        const currentVisibility = scatterPlot.data.datasets[index].hidden;
+
+        scatterPlot.data.datasets[index].hidden = !currentVisibility;
+        scatterPlot.update();
+    }
+</script>
+
+<h2>Average Power and Toughness By Color</h2>
+<table class="table">
+    <tr>
+        <th>Color</th>
+
+        @foreach (var creatureCount in @creatureCounts.Where(_ => _.Key.Item1 == "O"))
+        {
+            @if (@creatureCount.Value > 0)
+            {
+                <th colspan="2">MV: @creatureCount.Key.Item2</th>
+            }
+        }
+
+    </tr>
+
+    @*sub header*@
+    <tr>
+        <td></td>
+        @foreach (var creatureCount in @creatureCounts.Where(_ => _.Key.Item1 == "O"))
+        {
+            @if (@creatureCount.Value > 0)
+            {
+                <th>Count</th>
+                <th>P/T</th>
+            }
+        }
+    </tr>
+
+    @foreach (var color in colorKeys)
+    {
+        <tr>
+            <td>@TranslateColorToWord(color)</td>
+
+            @foreach (var mv in Enumerable.Range(0, 8))
+            {
+                var key = new Tuple<string, int>(color, mv);
+
+                @if (creatureCounts[Tuple.Create("O", mv)] > 0)
+                {
+                    @if (creatureCounts[key] > 0)
+                    {
+                        <td>@creatureCounts[key]</td>
+                        <td>@string.Format("{0:0.00}", @averages[key].Item1) / @string.Format("{0:0.00}", @averages[key].Item2)</td>
+                    }
+
+                    else
+                    {
+                        <td>0</td>
+                        <td>N/A</td>
+                    }
+                }
+            }
+        </tr>
+    }
+</table>
+
+<br />
+<br />
+
+<h2>Median Power and Toughness By Color</h2>
+<table class="table">
+    <tr>
+        <th>Color</th>
+
+        @foreach (var creatureCount in @creatureCounts.Where(_ => _.Key.Item1 == "O"))
+        {
+            @if (@creatureCount.Value > 0)
+            {
+                <th colspan="2">MV: @creatureCount.Key.Item2</th>
+            }
+        }
+    </tr>
+
+    @*sub header*@
+    <tr>
+        <td></td>
+        @foreach (var creatureCount in @creatureCounts.Where(_ => _.Key.Item1 == "O"))
+        {
+            @if (@creatureCount.Value > 0)
+            {
+                <th>Count</th>
+                <th>P/T</th>
+            }
+        }
+    </tr>
+
+    @foreach (var color in colorKeys)
+    {
+        <tr>
+            <td>@TranslateColorToWord(color)</td>
+
+            @foreach (var mv in Enumerable.Range(0, 8))
+            {
+                var key = new Tuple<string, int>(color, mv);
+
+                @if (creatureCounts[Tuple.Create("O", mv)] > 0)
+                {
+                    @if (creatureCounts[key] > 0)
+                    {
+                        <td>@creatureCounts[key]</td>
+                        <td>@medians[key].Item1 / @medians[key].Item2</td>
+                    }
+
+                    else
+                    {
+                        <td>0</td>
+                        <td>N/A</td>
+                    }
+                }
+            }
+        </tr>
+    }
+</table>
+
+@functions 
+{
+    public string TranslateColorToWord(string colorChar)
+    {
+        switch (colorChar)
+        {
+            case "W": return "White";
+            case "U": return "Blue";
+            case "B": return "Black";
+            case "R": return "Red";
+            case "G": return "Green";
+            case "M": return "Multicolor";
+            case "C": return "Colorless";
+            case "O": return "Overall";
+            default: return "Unknown";
+        }
+
+
+    }
+}
+    

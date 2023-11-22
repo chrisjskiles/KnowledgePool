@@ -1,0 +1,33 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+td {
+    border-width: 1px;
+}
+
+a.chart-action {
+    background: rgba(40, 44, 52, 0.2);
+    border: 1px solid;
+    border-radius: 6px;
+    color: #3080d0;
+    display: inline-block;
+    padding: 8px 16px;
+    margin: 0 8px 8px 0;
+    text-decoration:none;
+}

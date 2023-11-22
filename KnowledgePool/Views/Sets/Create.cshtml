@@ -1,0 +1,138 @@
+﻿@model KnowledgePool.Models.Set
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>Set</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="BaseSetSize" class="control-label"></label>
+                <input asp-for="BaseSetSize" class="form-control" />
+                <span asp-validation-for="BaseSetSize" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Block" class="control-label"></label>
+                <input asp-for="Block" class="form-control" />
+                <span asp-validation-for="Block" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CardsphereSetId" class="control-label"></label>
+                <input asp-for="CardsphereSetId" class="form-control" />
+                <span asp-validation-for="CardsphereSetId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Code" class="control-label"></label>
+                <input asp-for="Code" class="form-control" />
+                <span asp-validation-for="Code" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="IsFoilOnly" class="control-label"></label>
+                <input asp-for="IsFoilOnly" class="form-control" />
+                <span asp-validation-for="IsFoilOnly" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="IsForeignOnly" class="control-label"></label>
+                <input asp-for="IsForeignOnly" class="form-control" />
+                <span asp-validation-for="IsForeignOnly" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="IsNonFoilOnly" class="control-label"></label>
+                <input asp-for="IsNonFoilOnly" class="form-control" />
+                <span asp-validation-for="IsNonFoilOnly" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="IsOnlineOnly" class="control-label"></label>
+                <input asp-for="IsOnlineOnly" class="form-control" />
+                <span asp-validation-for="IsOnlineOnly" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="IsPartialPreview" class="control-label"></label>
+                <input asp-for="IsPartialPreview" class="form-control" />
+                <span asp-validation-for="IsPartialPreview" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="KeyruneCode" class="control-label"></label>
+                <input asp-for="KeyruneCode" class="form-control" />
+                <span asp-validation-for="KeyruneCode" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Languages" class="control-label"></label>
+                <input asp-for="Languages" class="form-control" />
+                <span asp-validation-for="Languages" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="McmId" class="control-label"></label>
+                <input asp-for="McmId" class="form-control" />
+                <span asp-validation-for="McmId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="McmIdExtras" class="control-label"></label>
+                <input asp-for="McmIdExtras" class="form-control" />
+                <span asp-validation-for="McmIdExtras" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="McmName" class="control-label"></label>
+                <input asp-for="McmName" class="form-control" />
+                <span asp-validation-for="McmName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="MtgoCode" class="control-label"></label>
+                <input asp-for="MtgoCode" class="form-control" />
+                <span asp-validation-for="MtgoCode" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Name" class="control-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ParentCode" class="control-label"></label>
+                <input asp-for="ParentCode" class="form-control" />
+                <span asp-validation-for="ParentCode" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ReleaseDate" class="control-label"></label>
+                <input asp-for="ReleaseDate" class="form-control" />
+                <span asp-validation-for="ReleaseDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TcgplayerGroupId" class="control-label"></label>
+                <input asp-for="TcgplayerGroupId" class="form-control" />
+                <span asp-validation-for="TcgplayerGroupId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TokenSetCode" class="control-label"></label>
+                <input asp-for="TokenSetCode" class="form-control" />
+                <span asp-validation-for="TokenSetCode" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TotalSetSize" class="control-label"></label>
+                <input asp-for="TotalSetSize" class="form-control" />
+                <span asp-validation-for="TotalSetSize" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Type" class="control-label"></label>
+                <input asp-for="Type" class="form-control" />
+                <span asp-validation-for="Type" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
