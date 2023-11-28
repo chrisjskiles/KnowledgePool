@@ -15,6 +15,48 @@
     ViewBag.Title = "Data Viewer";
 }
 
+@section scripts {
+    @* <script type="module" src="~/js/chartConfig.js"></script>
+    <script type="module">
+        import { createChart, toggleScatterData } from "./js/chartConfig.js";
+        window.createChart = createChart;
+        window.toggleScatterData = toggleScatterData;
+    </script>
+
+    <script type="text/javascript">
+        const averageChartJson = JSON.parse('@Html.Raw(ViewData["OverallAverage"])');
+        document.onload = createChart("averageLine", averageChartJson);
+    </script> *@
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript">
+
+        const averageChart = document.getElementById("averageLine");
+        const averageChartJson = JSON.parse('@Html.Raw(ViewData["OverallAverage"])');
+        new Chart(averageChart, averageChartJson);
+
+        const testAverageChart = document.getElementById("test");
+        const testChartJson = JSON.parse('@Html.Raw(ViewData["TestAverage"])');
+        new Chart(testAverageChart, testChartJson);
+
+        const medianChart = document.getElementById("medianLine");
+        const medianChartJson = JSON.parse('@Html.Raw(ViewData["OverallMedian"])');
+        new Chart(medianChart, medianChartJson);
+
+        const scatterPlotCanvas = document.getElementById("scatter");
+        const scatterPlotJson = JSON.parse('@Html.Raw(ViewData["ScatterData"])');
+        const scatterPlot = new Chart(scatterPlotCanvas, scatterPlotJson);
+
+        function toggleScatterData(elem) {
+            const index = parseInt(elem.id[1]);
+            const currentVisibility = scatterPlot.data.datasets[index].hidden;
+
+            scatterPlot.data.datasets[index].hidden = !currentVisibility;
+            scatterPlot.update();
+        }
+    </script>
+}
+
 <h2>Set Search</h2>
 <p>
     @using (Html.BeginForm("Index", "DataViewer", FormMethod.Get))
@@ -51,6 +93,10 @@
     </div>
 </div>
 
+<div>
+    <canvas id="test"></canvas>
+</div>
+
 <br/><br/>
 
 <div>
@@ -83,7 +129,9 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+@* <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script type="text/javascript">
 
     const averageChart = document.getElementById("averageLine");
@@ -105,7 +153,7 @@
         scatterPlot.data.datasets[index].hidden = !currentVisibility;
         scatterPlot.update();
     }
-</script>
+</script> *@
 
 <h2>Average Power and Toughness By Color</h2>
 <table class="table">
