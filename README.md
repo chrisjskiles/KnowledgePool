@@ -18,3 +18,8 @@ My hope is that eventually these visualizations will be useful to high-level, en
 
 ## Contributions
 If you are a programmer, a fan of Magic, and/or interested in contributing to this project feel free to contact me. I will find something for you to help with or you can come up with features you'd like to add yourself
+
+![image](https://github.com/chrisjskiles/KnowledgePool/assets/9207489/577da9f7-a2bb-46f8-85f6-cca36354d2e7)
+
+![image](https://github.com/chrisjskiles/KnowledgePool/assets/9207489/cb8c08bb-ed5c-41d4-af18-c1709654caf6)
+
