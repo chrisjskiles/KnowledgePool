@@ -23,8 +23,9 @@ namespace KnowledgePool.Controllers
             _context= context;
         }
 
-        public ActionResult Index(string setList, string searchString)
+        public ActionResult Index(string setList, string searchString, string dataType)
         {
+            var isAverage = dataType?.Equals("average", StringComparison.OrdinalIgnoreCase) ?? true;
             var sets = new List<Set>();
 
             if (searchString is not null)
@@ -63,18 +64,6 @@ namespace KnowledgePool.Controllers
                 cards = _context.Cards.AsEnumerable().Where(_ => _.SetCode ==  latestSetCode).DistinctBy(_ => _.Name).ToList();
             }
 
-            var cardStats = new CardStats(cards);
-
-            ViewData["CreatureCounts"] = cardStats.CreatureCount;
-            ViewData["CardAverages"] = cardStats.Averages;
-            ViewData["CardMedians"] = cardStats.Medians;
-
-            var avgData1 = cardStats.Averages.Where(_ => _.Key.Item1 == "O").Select(_ => _.Value.Item1);
-            var avgData2 = cardStats.Averages.Where(_ => _.Key.Item1 == "O").Select(_ => _.Value.Item2);
-
-            var medData1 = cardStats.Medians.Where(_ => _.Key.Item1 == "O").Select(_ => _.Value.Item1);
-            var medData2 = cardStats.Medians.Where(_ => _.Key.Item1 == "O").Select(_ => _.Value.Item2);
-
             var setCode = setList;
             if (setCode is null) setCode = _context.Sets
                     .Where(_ => _.Type == "expansion" || _.Type == "core")
@@ -88,36 +77,54 @@ namespace KnowledgePool.Controllers
                     && !_.Toughness.Contains("*")
                     && !(_.Power == "0" || _.Toughness == "0"));
 
+            var amdPower = GetAverageMedianData(creatures);
+            var amdToughness = GetAverageMedianData(creatures, false);
 
-            ViewData["TestAverage"] = GetAverageOrMedianJson<double>(GetAverageMedianData(creatures));
-            ViewData["OverallAverage"] = GetAverageOrMedianJson(avgData1, avgData2);
-            ViewData["OverallMedian"] = GetAverageOrMedianJson(medData1, medData2);
+            if (isAverage)
+            {
+                var averagePowers = new Dictionary<string, List<double>>(amdPower.Select(_ => new KeyValuePair<string, List<double>>
+                    (
+                        _.Key,
+                        _.Value.Averages.ToList()
+                    ))); 
+
+                var averageToughnesses = new Dictionary<string, List<double>>(amdToughness.Select(_ => new KeyValuePair<string, List<double>>
+                    (
+                        _.Key,
+                        _.Value.Averages.ToList()
+                    )));
+
+                ViewData["PowerData"] = GetAverageOrMedianJson(averagePowers, "Power");
+                ViewData["ToughnessData"] = GetAverageOrMedianJson(averageToughnesses, "Toughness");
+            }
+
+            else
+            {
+                var medianPowers = new Dictionary<string, List<int>>(amdPower.Select(_ => new KeyValuePair<string, List<int>>
+                (
+                    _.Key,
+                    _.Value.Medians.ToList()
+                ))); 
+
+                var medianToughnesses = new Dictionary<string, List<int>>(amdToughness.Select(_ => new KeyValuePair<string, List<int>>
+                (
+                    _.Key,
+                    _.Value.Medians.ToList()
+                )));
+
+                ViewData["PowerData"] = GetAverageOrMedianJson(medianPowers, "Power");
+                ViewData["ToughnessData"] = GetAverageOrMedianJson(medianToughnesses, "Toughness");
+            }
+
             ViewData["ScatterData"] = GetBubbleJson(setList);
 
             return View();
         }
 
-        public ActionResult Welcome()
+        public string GetAverageOrMedianJson<T>(Dictionary<string, List<T>> data, string PorT)
         {
-            return View();
-        }
+            var labelType = data is List<double> ? "Average" : "Median";
 
-        //public string GetPowerJson(string? setCode, bool isAverage = true)
-        //{
-        //    var labelType = isAverage ? "Average" : "Median";
-
-        //    if (setCode is null) setCode = _context.Sets.Where(_ => _.Type == "expansion" || _.Type == "core").OrderByDescending(_ => _.ReleaseDate).Select(_ => _.Code).First();
-
-        //    var creatures = _context.Cards
-        //        .Where(_ => _.SetCode == setCode && EF.Functions.Like(_.Type, "%creature%") && !EF.Functions.Like(_.Power, "%*%") && !EF.Functions.Like(_.Toughness, "%*%"));
-
-
-
-        //    return string.Empty;
-        //}
-
-        public string GetAverageOrMedianJson<T>(Dictionary<string, AverageMedianData> amd)
-        {
             var x = JsonConvert.SerializeObject(new
             {
                 type = "line",
@@ -129,64 +136,72 @@ namespace KnowledgePool.Controllers
                         new
                         {
                             label = "White",
-                            data = amd["W"].Averages,
+                            data = data["W"],
                             borderColor = Colors.White,
+                            backgroundColor = Colors.White,
                             hidden = true
                         },
 
                         new
                         {
                             label = "Blue",
-                            data = amd["U"].Averages,
+                            data = data["U"],
                             borderColor = Colors.Blue,
+                            backgroundColor = Colors.Blue,
                             hidden = true
                         },
 
                         new
                         {
                             label = "Black",
-                            data = amd["B"].Averages,
+                            data = data["B"],
                             borderColor = Colors.Black,
+                            backgroundColor = Colors.Black,
                             hidden = true
                         },
 
                         new
                         {
                             label = "Red",
-                            data = amd["R"].Averages,
+                            data = data["R"],
                             borderColor = Colors.Red,
+                            backgroundColor = Colors.Red,
                             hidden = true
                         },
 
                         new
                         {
                             label = "Green",
-                            data = amd["G"].Averages,
+                            data = data["G"],
                             borderColor = Colors.Green,
+                            backgroundColor = Colors.Green,
                             hidden = true
                         },
 
                         new
                         {
                             label = "Gold",
-                            data = amd["M"].Averages,
+                            data = data["M"],
                             borderColor = Colors.Gold,
+                            backgroundColor = Colors.Gold,
                             hidden = true
                         },
 
                         new
                         {
                             label = "Colorless",
-                            data = amd["C"].Averages,
+                            data = data["C"],
                             borderColor = Colors.Colorless,
+                            backgroundColor = Colors.Colorless,
                             hidden = true
                         },
 
                         new
                         {
                             label = "All Creatures",
-                            data = amd["O"].Averages,
+                            data = data["O"],
                             borderColor = Colors.All,
+                            backgroundColor = Colors.All,
                             hidden = false
                         }
                     }
@@ -219,7 +234,7 @@ namespace KnowledgePool.Controllers
                         title = new
                         {
                             display = true,
-                            text = "Power by Mana Cost",
+                            text = $"{labelType} {PorT} by Mana Cost",
                             font = new
                             {
                                 weight = "bold",
@@ -233,72 +248,101 @@ namespace KnowledgePool.Controllers
             return x;
         }
 
-        public string GetAverageOrMedianJson<T>(IEnumerable<T> data1, IEnumerable<T> data2)
+        public Dictionary<string, AverageMedianData> GetAverageMedianData(IEnumerable<Card> creatures, bool isPower = true)
         {
-            var labelType = data1 is IEnumerable<double> ? "Average" : "Median";
+            var data = new Dictionary<string, AverageMedianData>();
 
-            return JsonConvert.SerializeObject(new
+            foreach (var color in new List<string> { "W", "U", "B", "R", "G", "M", "C", "O"})
             {
-                type = "line",
-                data = new
+                var values = new List<KeyValuePair<int, int>>();
+
+                if (color == "O")
                 {
-                    labels = new List<string> { "0", "1", "2", "3", "4", "5", "6", "7+" },
+                    values = creatures
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int) _.ManaValue,
+                            Int32.Parse(isPower ? _.Power : _.Toughness)))
+                        .ToList();
+                }
 
-                    datasets = new[]
+                else if (color == "M")
+                {
+                    values = creatures
+                        .Where(_ => _.Colors.Length > 1)
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int)_.ManaValue,
+                            Int32.Parse(isPower ? _.Power : _.Toughness)))
+                        .ToList();
+                }
+
+                else if (color == "C")
+                {
+                    values = creatures
+                        .Where(_ => _.Colors == string.Empty)
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int)_.ManaValue,
+                            Int32.Parse(isPower ? _.Power : _.Toughness)))
+                        .ToList();
+                }
+
+                else
+                {
+                    values = creatures
+                        .Where(_ => _.Colors == color)
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int)_.ManaValue,
+                            Int32.Parse(isPower ? _.Power : _.Toughness)))
+                        .ToList();
+                }
+
+                var averages = new List<double>();
+                var medians = new List<int>();
+
+                foreach (var mv in new List<int>(Enumerable.Range(0, 8))) 
+                {
+                    var valuesByMv = new List<int>();
+
+                    if (mv == 7)
                     {
-                        new
-                        {
-                            label = "Power",
-                            data = data1,
-                            borderColor = "#36A2EB"
-                        },
-
-                        new
-                        {
-                            label = "Toughness",
-                            data = data2,
-                            borderColor = "#FF6384"
-                        }
+                        valuesByMv = values
+                            .Where(_ => _.Key >= mv)
+                            .Select(_ => _.Value)
+                            .OrderBy(_ => _)
+                            .ToList();
                     }
-                },
 
-                options = new
-                {
-                    scales = new
+                    else
                     {
-                        x = new
-                        {
-                            title = new
-                            {
-                                display = true,
-                                text = "Mana Value"
-                            }
-                        },
-                        y = new
-                        {
-                            title = new
-                            {
-                                display = true,
-                                text = "Power or Toughness"
-                            }
-                        }
-                    },
+                        valuesByMv = values
+                            .Where(_ => _.Key == mv)
+                            .Select(_ => _.Value)
+                            .OrderBy(_ => _)
+                            .ToList(); 
+                    }
 
-                    plugins = new
+                    if (valuesByMv.Any())
                     {
-                        title = new
-                        {
-                            display = true,
-                            text = $"{labelType} Power and Toughness by Mana Cost",
-                            font = new
-                            {
-                                weight = "bold",
-                                size = 18
-                            }
-                        }
+                        averages.Add(valuesByMv.Average());
+                        medians.Add(valuesByMv.ElementAt(valuesByMv.Count() / 2));
+                    }
+
+                    else
+                    {
+                        averages.Add(0);
+                        medians.Add(0);
                     }
                 }
-            });
+
+                var amd = new AverageMedianData
+                {
+                    Averages = averages,
+                    Medians = medians
+                };
+
+                data.Add(color, amd);
+            }
+
+            return data;
         }
 
         public string GetBubbleJson(string? setCode)
@@ -311,7 +355,7 @@ namespace KnowledgePool.Controllers
             var creaturesDict = new Dictionary<string, List<ScatterDataPoint>>();
 
             var creaturesAll = creatures
-                .GroupBy(_ => new {_.Power, _.Toughness})
+                .GroupBy(_ => new { _.Power, _.Toughness })
                 .Select(_ => new ScatterDataPoint
                 {
                     x = _.Key.Power,
@@ -481,7 +525,7 @@ namespace KnowledgePool.Controllers
                         {
                             min = 0,
                             max = 15,
-                            ticks = new 
+                            ticks = new
                             {
                                 autoSkip = false,
                                 maxTicksLimite = 16
@@ -520,102 +564,6 @@ namespace KnowledgePool.Controllers
             });
         }
 
-        public Dictionary<string, AverageMedianData> GetAverageMedianData(IEnumerable<Card> creatures, bool isPower = true)
-        {
-            var data = new Dictionary<string, AverageMedianData>();
-
-            foreach (var color in new List<string> { "W", "U", "B", "R", "G", "M", "C", "O"})
-            {
-                var values = new List<KeyValuePair<int, int>>();
-
-                if (color == "O")
-                {
-                    values = creatures
-                        .Select(_ => new KeyValuePair<int, int>(
-                            (int) _.ManaValue,
-                            Int32.Parse(isPower ? _.Power : _.Toughness)))
-                        .ToList();
-                }
-
-                else if (color == "M")
-                {
-                    values = creatures
-                        .Where(_ => _.Colors.Length > 1)
-                        .Select(_ => new KeyValuePair<int, int>(
-                            (int)_.ManaValue,
-                            Int32.Parse(isPower ? _.Power : _.Toughness)))
-                        .ToList();
-                }
-
-                else if (color == "C")
-                {
-                    values = creatures
-                        .Where(_ => _.Colors is null)
-                        .Select(_ => new KeyValuePair<int, int>(
-                            (int)_.ManaValue,
-                            Int32.Parse(isPower ? _.Power : _.Toughness)))
-                        .ToList();
-                }
-
-                else
-                {
-                    values = creatures
-                        .Where(_ => _.Colors == color)
-                        .Select(_ => new KeyValuePair<int, int>(
-                            (int)_.ManaValue,
-                            Int32.Parse(isPower ? _.Power : _.Toughness)))
-                        .ToList();
-                }
-
-                var averages = new List<double>();
-                var medians = new List<int>();
-
-                foreach (var mv in new List<int>(Enumerable.Range(0, 8))) 
-                {
-                    var valuesByMv = new List<int>();
-
-                    if (mv == 7)
-                    {
-                        valuesByMv = values
-                            .Where(_ => _.Key >= mv)
-                            .Select(_ => _.Value)
-                            .OrderBy(_ => _)
-                            .ToList();
-                    }
-
-                    else
-                    {
-                        valuesByMv = values
-                            .Where(_ => _.Key == mv)
-                            .Select(_ => _.Value)
-                            .OrderBy(_ => _)
-                            .ToList(); 
-                    }
-
-                    if (valuesByMv.Any())
-                    {
-                        averages.Add(valuesByMv.Average());
-                        medians.Add(valuesByMv.ElementAt(valuesByMv.Count() / 2));
-                    }
-
-                    else
-                    {
-                        averages.Add(0);
-                        medians.Add(0);
-                    }
-                }
-
-                var amd = new AverageMedianData
-                {
-                    Averages = averages,
-                    Medians = medians
-                };
-
-                data.Add(color, amd);
-            }
-
-            return data;
-        }
     }
 
     public class ScatterDataPoint
@@ -641,172 +589,5 @@ namespace KnowledgePool.Controllers
         public const string Gold = "#FC7703";
         public const string Colorless = "#705336";
         public const string All = "#A60092";
-    }
-
-    public class CardStats
-    {
-        //the key represents the color and mana value, the value represents count
-        public Dictionary<Tuple<string, int>, int> CreatureCount { get; set; }
-
-        //key is same as above, value is power and toughness
-        public Dictionary<Tuple<string, int>, Tuple<double, double>> Averages { get; set; }
-        public Dictionary<Tuple<string, int>, Tuple<int, int>> Medians { get; set; }
-
-        public CardStats()
-        {
-            CreatureCount = new Dictionary<Tuple<string, int>, int>();
-
-            Averages = new Dictionary<Tuple<string, int>, Tuple<double, double>>();
-            Medians = new Dictionary<Tuple<string, int>, Tuple<int, int>>();
-
-        }
-        public CardStats(IEnumerable<Card> cards)
-        {
-            CreatureCount = new Dictionary<Tuple<string, int>, int>();
-            Averages = new Dictionary<Tuple<string, int>, Tuple<double, double>>();
-            Medians = new Dictionary<Tuple<string, int>, Tuple<int, int>>();
-
-            var creatures = cards.Where(_ => _.Type.Contains("creature", StringComparison.OrdinalIgnoreCase));
-
-            var colors = new List<string> { "W", "U", "B", "R", "G", "M", "C", "O" };
-
-            foreach (var color in colors)
-            {
-                var mvs = new List<int>(Enumerable.Range(0, 8));
-
-                foreach (var mv in mvs) AddStatTuples(color, creatures, mv);
-            }
-        }
-
-        private void AddStatTuples(string color, IEnumerable<Card> creatures, int mv)
-        {
-            double PowerAvg = 0.0;
-            double ToughnessAvg = 0.0;
-
-            int PowerMedian = 0;
-            int ToughnessMedian = 0;
-
-            int creatureCount = 0;
-
-            var filteredCreatures = creatures.Where(_ => !_.Power.Contains("*") && !_.Toughness.Contains("*") && (_.Power != "0" && _.Toughness != "0"));
-
-            if (mv >= 0) filteredCreatures = filteredCreatures.Where(_ => mv >= 7 ? (int)_.ManaValue >= mv : (int)_.ManaValue == mv);
-
-            if (color == "M")
-            {
-                var multicolorCreatures = filteredCreatures.Where(_ => _.Colors.Contains(","));
-
-                if (multicolorCreatures.Any())
-                {
-                    PowerAvg = multicolorCreatures.Select(_ => Int32.Parse(_.Power)).Average();
-                    ToughnessAvg = multicolorCreatures.Select(_ => Int32.Parse(_.Toughness)).Average();
-
-                    creatureCount = multicolorCreatures.Count();
-
-                    PowerMedian = multicolorCreatures.Select(_ => Int32.Parse(_.Power)).OrderBy(_ => _).ElementAt(creatureCount / 2);
-                    ToughnessMedian = multicolorCreatures.Select(_ => Int32.Parse(_.Toughness)).OrderBy(_ => _).ElementAt(creatureCount / 2);
-                }
-            }
-
-            if (color == "C")
-            {
-                var colorlessCreatures = filteredCreatures.Where(_ => _.Colors == string.Empty);
-
-                if (colorlessCreatures.Any())
-                {
-                    PowerAvg = colorlessCreatures.Select(_ => Int32.Parse(_.Power)).Average();
-                    ToughnessAvg = colorlessCreatures.Select(_ => Int32.Parse(_.Toughness)).Average();
-
-                    creatureCount = colorlessCreatures.Count();
-
-                    PowerMedian = colorlessCreatures.Select(_ => Int32.Parse(_.Power)).OrderBy(_ => _).ElementAt(creatureCount / 2);
-                    ToughnessMedian = colorlessCreatures.Select(_ => Int32.Parse(_.Toughness)).OrderBy(_ => _).ElementAt(creatureCount / 2);
-                }
-            }
-
-            if (color == "O")
-            {
-                if (filteredCreatures.Any())
-                {
-                    PowerAvg = filteredCreatures.Select(_ => Int32.Parse(_.Power)).Average();
-                    ToughnessAvg = filteredCreatures.Select(_ => Int32.Parse(_.Toughness)).Average();
-
-                    creatureCount = filteredCreatures.Count();
-
-                    PowerMedian = filteredCreatures.Select(_ => Int32.Parse(_.Power)).OrderBy(_ => _).ElementAt(creatureCount / 2);
-                    ToughnessMedian = filteredCreatures.Select(_ => Int32.Parse(_.Toughness)).OrderBy(_ => _).ElementAt(creatureCount / 2);
-                }
-            }
-
-            else
-            {
-                var colorCreatures = filteredCreatures.Where(_ => _.Colors == color);
-
-                if (colorCreatures.Any())
-                {
-                    PowerAvg = colorCreatures.Select(_ => Int32.Parse(_.Power)).Average();
-                    ToughnessAvg = colorCreatures.Select(_ => Int32.Parse(_.Toughness)).Average();
-
-                    creatureCount = colorCreatures.Count();
-
-                    PowerMedian = colorCreatures.Select(_ => Int32.Parse(_.Power)).OrderBy(_ => _).ElementAt(creatureCount / 2);
-                    ToughnessMedian = colorCreatures.Select(_ => Int32.Parse(_.Toughness)).OrderBy(_ => _).ElementAt(creatureCount / 2);
-                }
-            }
-
-            var dictKey = new Tuple<string, int>(color, mv);
-
-            var averageTuple = new Tuple<double, double>(PowerAvg, ToughnessAvg);
-            var medianTuple = new Tuple<int, int>(PowerMedian, ToughnessMedian);
-
-            CreatureCount.Add(dictKey, creatureCount);
-            Averages.Add(dictKey, averageTuple);
-            Medians.Add(dictKey, medianTuple);
-
-        }
-
-        private Tuple<double, double> StatAverageTuple(string color, IEnumerable<Card> creatures)
-        {
-            double PowerAvg = 0.0;
-            double ToughnessAvg = 0.0;
-
-            var filteredCreatures = creatures.Where(_ => !_.Power.Contains("*") && !_.Toughness.Contains("*"));
-
-            if (color == "M")
-            {
-                var multicolorCreatures = filteredCreatures.Where(_ => _.Colors.Contains(","));
-
-                if (multicolorCreatures.Any())
-                {
-                    PowerAvg = multicolorCreatures.Select(_ => Int32.Parse(_.Power)).Average();
-                    ToughnessAvg = multicolorCreatures.Select(_ => Int32.Parse(_.Toughness)).Average();
-                }
-            }
-
-            if (color == "C")
-            {
-                var colorlessCreatures = filteredCreatures.Where(_ => _.Colors == string.Empty);
-
-                if (colorlessCreatures.Any())
-                {
-                    PowerAvg = colorlessCreatures.Select(_ => Int32.Parse(_.Power)).Average();
-                    ToughnessAvg = colorlessCreatures.Select(_ => Int32.Parse(_.Toughness)).Average();
-                }
-            }
-
-            else
-            {
-                var colorCreatures = filteredCreatures.Where(_ => _.Colors == color);
-
-                if (colorCreatures.Any())
-                {
-                    PowerAvg = filteredCreatures.Select(_ => Int32.Parse(_.Power)).Average();
-                    ToughnessAvg = filteredCreatures.Select(_ => Int32.Parse(_.Toughness)).Average();
-                }
-            }
-
-
-            return new Tuple<double, double>(PowerAvg, ToughnessAvg);
-        }
     }
 }
