@@ -30,6 +30,7 @@
         const scatterPlotJson = JSON.parse('@Html.Raw(ViewData["ScatterData"])');
         const scatterPlot = new Chart(scatterPlotCanvas, scatterPlotJson);
 
+        @* not functional *@
         scatterPlot.options.plugins.beforeDraw = chart => {
             chart.getDatasetMeta(0).data.forEach(v => {
                 v.options.radius *= 5;
@@ -52,6 +53,27 @@
             plot.data.datasets[index].hidden = !currentVisibility;
             plot.update();
         }
+
+        function setInput() {
+            const selectedValue = document.getElementById("set").value;
+            const opts = Array.from(document.getElementById("setList").children);
+
+            opts.forEach((opt) => {
+                if (opt.value == selectedValue) {
+                    const searchedSets = document.getElementById('searchedSets');
+
+                    const setButton = document.createElement('button');
+                    setButton.innerText = selectedValue;
+                    setButton.classList.add('set-button');
+
+                    setButton.addEventListener('click', function () {
+                        searchedSets.removeChild(setButton);
+                    });
+
+                    searchedSets.appendChild(setButton);
+                }
+            });
+        }
     </script>
 }
 
@@ -60,19 +82,24 @@
     @using (Html.BeginForm("Index", "DataViewer", FormMethod.Get))
     {
         <p>
-        <label for="setList">Type the set name: </label>
-        <input list="setList" name="set" id="set" value="@ViewBag.fullSetName" />
-        <datalist id="setList" name="setList">
-            @foreach (SelectListItem sli in ViewBag.setList)
-            {
-                <option value=@sli.Value>@sli.Text</option>
-            }
-        </datalist>
+            <label for="setList">Type the set name: </label>
+            <input list="setList" name="set" id="set" value="@ViewBag.fullSetName" oninput="setInput()"/>
+            <datalist id="setList" name="setList">
+                @foreach (SelectListItem sli in ViewBag.setList)
+                {
+                <option value=@sli.Text>@sli.Value</option>
+                }
+            </datalist>
+            <br>
             <input type="radio" name="dataType" value="Average" checked="checked" /> Average
             <input type="radio" name="dataType" value="Median" /> Median
             <input type="submit" value="Submit">
         </p>
     }
+
+    <div id="searchedSets">
+        <!--sets will be added here as searched-->
+    </div>
 </p>
 
 @{

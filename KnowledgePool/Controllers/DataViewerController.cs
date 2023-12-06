@@ -51,22 +51,23 @@ namespace KnowledgePool.Controllers
                 setListSelection.Add(new SelectListItem { Text = s.Name + $" ({s.Code})", Value = s.Code });
             }
 
-            var cards = new List<Card>();
+            var setCode = set;
 
-            if (set is not null) cards = _context.Cards.AsEnumerable().Where(_ => _.SetCode == set).DistinctBy(_ => _.Name).ToList();
-
-            else
+            //this means input came as full set name
+            if (setCode is not null && setCode.Length > 5)
             {
-                var latestSetCode = sets.Select(_ => _.Code).First();
+                var startIndex = setCode.IndexOf('(') + 1;
+                var endIndex = setCode.IndexOf(')');
 
-                cards = _context.Cards.AsEnumerable().Where(_ => _.SetCode ==  latestSetCode).DistinctBy(_ => _.Name).ToList();
+                setCode = setCode.Substring(startIndex, endIndex - startIndex);
             }
 
-            var setCode = set;
-            if (setCode is null) setCode = _context.Sets
+            if (setCode is null || !_context.Sets.Any(_ => _.Code == setCode)) setCode = _context.Sets
                     .Where(_ => _.Type == "expansion" || _.Type == "core")
                     .OrderByDescending(_ => _.ReleaseDate).Select(_ => _.Code)
                     .First();
+
+            var cards = _context.Cards.AsEnumerable().Where(_ => _.SetCode == setCode).DistinctBy(_ => _.Name).ToList();
 
             var creatures = cards
                 .Where(_ => _.SetCode == setCode 
