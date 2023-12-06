@@ -60,14 +60,17 @@
     @using (Html.BeginForm("Index", "DataViewer", FormMethod.Get))
     {
         <p>
-            Set: @Html.DropDownList("setList")
+        <label for="setList">Type the set name: </label>
+        <input list="setList" name="set" id="set" value="@ViewBag.fullSetName" />
+        <datalist id="setList" name="setList">
+            @foreach (SelectListItem sli in ViewBag.setList)
+            {
+                <option value=@sli.Value>@sli.Text</option>
+            }
+        </datalist>
             <input type="radio" name="dataType" value="Average" checked="checked" /> Average
             <input type="radio" name="dataType" value="Median" /> Median
             <input type="submit" value="Submit">
-
-            <br>
-            Set Name: @Html.TextBox("searchString")
-            <input type="submit" value="Filter">
         </p>
     }
 </p>

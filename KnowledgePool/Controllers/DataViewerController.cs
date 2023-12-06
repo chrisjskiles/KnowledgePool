@@ -23,7 +23,7 @@ namespace KnowledgePool.Controllers
             _context= context;
         }
 
-        public ActionResult Index(string setList, string searchString, string dataType)
+        public ActionResult Index(string set, string searchString, string dataType)
         {
             var isAverage = dataType?.Equals("average", StringComparison.OrdinalIgnoreCase) ?? true;
             var sets = new List<Set>();
@@ -46,16 +46,14 @@ namespace KnowledgePool.Controllers
             }
 
             var setListSelection = new List<SelectListItem>();
-            foreach (var set in sets)
+            foreach (var s in sets)
             {
-                setListSelection.Add(new SelectListItem { Text = set.Name + $" ({set.Code})", Value = set.Code });
+                setListSelection.Add(new SelectListItem { Text = s.Name + $" ({s.Code})", Value = s.Code });
             }
-
-            ViewBag.setList = setListSelection;
 
             var cards = new List<Card>();
 
-            if (setList is not null) cards = _context.Cards.AsEnumerable().Where(_ => _.SetCode == setList).DistinctBy(_ => _.Name).ToList();
+            if (set is not null) cards = _context.Cards.AsEnumerable().Where(_ => _.SetCode == set).DistinctBy(_ => _.Name).ToList();
 
             else
             {
@@ -64,7 +62,7 @@ namespace KnowledgePool.Controllers
                 cards = _context.Cards.AsEnumerable().Where(_ => _.SetCode ==  latestSetCode).DistinctBy(_ => _.Name).ToList();
             }
 
-            var setCode = setList;
+            var setCode = set;
             if (setCode is null) setCode = _context.Sets
                     .Where(_ => _.Type == "expansion" || _.Type == "core")
                     .OrderByDescending(_ => _.ReleaseDate).Select(_ => _.Code)
@@ -94,8 +92,8 @@ namespace KnowledgePool.Controllers
                         _.Value.Averages.ToList()
                     )));
 
-                ViewData["PowerData"] = GetAverageOrMedianJson(averagePowers, "Power");
-                ViewData["ToughnessData"] = GetAverageOrMedianJson(averageToughnesses, "Toughness");
+                ViewData["PowerData"] = GetAverageOrMedianJson(averagePowers, "Power", setCode);
+                ViewData["ToughnessData"] = GetAverageOrMedianJson(averageToughnesses, "Toughness", setCode);
             }
 
             else
@@ -112,20 +110,25 @@ namespace KnowledgePool.Controllers
                     _.Value.Medians.ToList()
                 )));
 
-                ViewData["PowerData"] = GetAverageOrMedianJson(medianPowers, "Power");
-                ViewData["ToughnessData"] = GetAverageOrMedianJson(medianToughnesses, "Toughness");
+                ViewData["PowerData"] = GetAverageOrMedianJson(medianPowers, "Power", setCode);
+                ViewData["ToughnessData"] = GetAverageOrMedianJson(medianToughnesses, "Toughness", setCode);
             }
 
-            ViewData["ScatterData"] = GetBubbleJson(setList);
+            ViewData["ScatterData"] = GetBubbleJson(set);
+
+            ViewBag.setList = setListSelection;
+            ViewBag.fullSetName = _context.Sets.Where(_ => _.Code == setCode).Select(_ => $"{_.Name} ({setCode})").First();
 
             return View();
         }
 
-        public string GetAverageOrMedianJson<T>(Dictionary<string, List<T>> data, string PorT)
+        public string GetAverageOrMedianJson<T>(Dictionary<string, List<T>> data, string PorT, string setCode)
         {
-            var labelType = data is List<double> ? "Average" : "Median";
+            var labelType = typeof(T) == typeof(double) ? "Average" : "Median";
 
-            var x = JsonConvert.SerializeObject(new
+            var setName = _context.Sets.First(_ => _.Code == setCode).Name;
+
+            return JsonConvert.SerializeObject(new
             {
                 type = "line",
                 data = new
@@ -234,7 +237,7 @@ namespace KnowledgePool.Controllers
                         title = new
                         {
                             display = true,
-                            text = $"{labelType} {PorT} by Mana Cost",
+                            text = $"{labelType} {PorT} by Mana Cost: {setName}",
                             font = new
                             {
                                 weight = "bold",
@@ -244,8 +247,6 @@ namespace KnowledgePool.Controllers
                     }
                 }
             });
-
-            return x;
         }
 
         public Dictionary<string, AverageMedianData> GetAverageMedianData(IEnumerable<Card> creatures, bool isPower = true)
