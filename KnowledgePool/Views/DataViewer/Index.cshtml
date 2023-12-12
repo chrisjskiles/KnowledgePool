@@ -15,38 +15,69 @@
     ViewBag.Title = "Data Viewer";
 }
 
+@{
+    var powerData = ViewData["PowerData"] as Dictionary<string, string>;
+    var toughnessData = ViewData["ToughnessData"] as Dictionary<string, string>;
+    var scatterData = ViewData["ScatterData"] as Dictionary<string, string>;
+}
+
 @section scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript">
-        const powerDataChart = document.getElementById("powerData");
-        const powerChartJson = JSON.parse('@Html.Raw(ViewData["PowerData"])');
-        const powerChart = new Chart(powerDataChart, powerChartJson);
+        document.addEventListener("DOMContentLoaded", function () {
+            @foreach (var d in powerData)
+            {
+                <text>
+                    const powerDataChart_@d.Key = document.getElementById('@d.Key-powerData');
+                    const powerChartJson_@d.Key = JSON.parse('@Html.Raw(d.Value)');
+                    window['powerChart_@d.Key'] = new Chart(powerDataChart_@d.Key, powerChartJson_@d.Key);
+                </text>
+            }
 
-        const toughnessDataChart = document.getElementById("toughnessData");
-        const toughnessChartJson = JSON.parse('@Html.Raw(ViewData["ToughnessData"])');
-        const toughnessChart = new Chart(toughnessDataChart, toughnessChartJson);
+            @foreach (var d in toughnessData)
+            {
+                <text>
+                    const toughnessDataChart_@d.Key = document.getElementById('@d.Key-toughnessData');
+                    const toughnessChartJson_@d.Key = JSON.parse('@Html.Raw(d.Value)');
+                    window['toughnessChart_@d.Key'] = new Chart(toughnessDataChart_@d.Key, toughnessChartJson_@d.Key);
+                </text>
+            }
 
-        const scatterPlotCanvas = document.getElementById("scatter");
-        const scatterPlotJson = JSON.parse('@Html.Raw(ViewData["ScatterData"])');
-        const scatterPlot = new Chart(scatterPlotCanvas, scatterPlotJson);
+            @foreach (var d in scatterData)
+            {
+                <text>
+                    const scatterDataChart_@d.Key = document.getElementById('@d.Key-scatterData');
+                    const scatterChartJson_@d.Key = JSON.parse('@Html.Raw(d.Value)');
+                    window['scatterChart_@d.Key'] = new Chart(scatterDataChart_@d.Key, scatterChartJson_@d.Key);
+                </text>
+            }
 
-        @* not functional *@
-        scatterPlot.options.plugins.beforeDraw = chart => {
-            chart.getDatasetMeta(0).data.forEach(v => {
-                v.options.radius *= 5;
-                v.options.hoverRadius = v.options.radius;
-            });
-        }
+            //not functional, supposed to change min bubble size
+            // scatterPlot.options.plugins.beforeDraw = chart => {
+            //     chart.getDatasetMeta(0).data.forEach(v => {
+            //         v.options.radius *= 5;
+            //         v.options.hoverRadius = v.options.radius;
+            //     });
+            // }
+            //
+            //scatterPlot.update();
 
-        scatterPlot.update();
+            loadSearchFromStorage();
+        });
 
+        //toggles visible datasets
         function toggleData(elem) {
-            const index = parseInt(elem.id[1]);
+            const length = elem.id.length
+            const index = parseInt(elem.id[length - 1]);
+
+            const hyphenIndex = elem.id.indexOf('-');
+            const setCode = elem.id.substring(0, hyphenIndex);
+
             var plot;
 
-            if (elem.id[0] === "p") plot = powerChart;
-            else if (elem.id[0] === "t") plot = toughnessChart;
-            else if (elem.id[0] === "s") plot = scatterPlot
+            if (elem.id[length - 2] === "p") plot = window['powerChart_' + setCode];
+            else if (elem.id[length - 2] === "t") plot = window['toughnessChart_' + setCode];
+            else if (elem.id[length - 2] === "s") plot = window['scatterChart_' + setCode];
 
             const currentVisibility = plot.data.datasets[index].hidden;
 
@@ -54,25 +85,61 @@
             plot.update();
         }
 
-        function setInput() {
-            const selectedValue = document.getElementById("set").value;
+        //creates a button to display which sets are selected
+        function addSearch(setInput) {
             const opts = Array.from(document.getElementById("setList").children);
 
-            opts.forEach((opt) => {
-                if (opt.value == selectedValue) {
-                    const searchedSets = document.getElementById('searchedSets');
+            const searchedSets = document.getElementById('searchedSets');
+            const existingButtons = Array.from(searchedSets.children, ({ textContent }) => textContent);
 
-                    const setButton = document.createElement('button');
-                    setButton.innerText = selectedValue;
-                    setButton.classList.add('set-button');
+            if (!existingButtons.includes(setInput)) {
+                opts.forEach((opt) => {
+                    if (opt.value == setInput) {
+                        const setButton = document.createElement('button');
+                        setButton.innerText = setInput;
+                        setButton.setAttribute('id', opt.textContent);
+                        setButton.classList.add('set-button');
+                        //setButton.setAttribute('name', 'sets');
 
-                    setButton.addEventListener('click', function () {
-                        searchedSets.removeChild(setButton);
-                    });
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.setAttribute('value', opt.textContent);
+                        hiddenInput.setAttribute('name', 'setIds')
+                        hiddenInput.style = 'display:none';
 
-                    searchedSets.appendChild(setButton);
-                }
-            });
+                        setButton.addEventListener('click', function () {
+                            searchedSets.removeChild(setButton);
+                            saveSearchToStorage();
+                        });
+
+                        searchedSets.appendChild(setButton);
+                        searchedSets.appendChild(hiddenInput);
+                        saveSearchToStorage();
+                    }
+                });
+            }
+
+            document.getElementById('set').value = '';    
+        }
+
+        //save all searched terms to session storage
+        function saveSearchToStorage() {
+            const setButtons = document.querySelectorAll('.set-button');
+            const sets = Array.from(setButtons).map(button => button.innerText);
+
+            sessionStorage.setItem('searchSets', JSON.stringify(sets));
+            console.log(sessionStorage.getItem('searchSets'));
+        }
+
+        //load all searched sets and create buttons
+        function loadSearchFromStorage() {
+            const storedSets = sessionStorage.getItem('searchSets');
+
+            if (storedSets) {
+                const sets = JSON.parse(storedSets);
+                sets.forEach(set => addSearch(set));
+            }
+
+            console.log(storedSets);
         }
     </script>
 }
@@ -83,34 +150,77 @@
     {
         <p>
             <label for="setList">Type the set name: </label>
-            <input list="setList" name="set" id="set" value="@ViewBag.fullSetName" oninput="setInput()"/>
+            <input list="setList" id="set" oninput="addSearch(this.value)"/>
             <datalist id="setList" name="setList">
                 @foreach (SelectListItem sli in ViewBag.setList)
                 {
-                <option value=@sli.Text>@sli.Value</option>
+                    <option value=@sli.Text>@sli.Value</option>
                 }
             </datalist>
             <br>
+
             <input type="radio" name="dataType" value="Average" checked="checked" /> Average
             <input type="radio" name="dataType" value="Median" /> Median
+            <br>
+
+            <input type="checkbox" name="singleChart" value="true"/> Display data on single chart 
+
+            
+            <div id="searchedSets">
+                <!--sets will be added here as searched-->
+            </div>
+            <br>
+
             <input type="submit" value="Submit">
         </p>
     }
-
-    <div id="searchedSets">
-        <!--sets will be added here as searched-->
-    </div>
 </p>
 
-@{
-    var creatureCounts = ViewData["CreatureCounts"] as IDictionary<Tuple<string, int>, int>;
-    var averages = ViewData["CardAverages"] as IDictionary<Tuple<string, int>, Tuple<double, double>>;
-    var medians = ViewData["CardMedians"] as IDictionary<Tuple<string, int>, Tuple<int, int>>;
-
-    var colorKeys = new List<string> { "W", "U", "B", "R", "G", "M", "C", "O" };
+@foreach (var d in powerData)
+{
+    <canvas id="@d.Key-powerData"></canvas>
+    <div>
+        <a id="@d.Key-p0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
+        <a id="@d.Key-p1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
+        <a id="@d.Key-p2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
+        <a id="@d.Key-p3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
+        <a id="@d.Key-p4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
+        <a id="@d.Key-p5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
+        <a id="@d.Key-p6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
+        <a id="@d.Key-p7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
+    </div>
 }
 
+@foreach (var d in toughnessData)
+{
+    <canvas id="@d.Key-toughnessData"></canvas>
+    <div>
+        <a id="@d.Key-t0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
+        <a id="@d.Key-t1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
+        <a id="@d.Key-t2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
+        <a id="@d.Key-t3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
+        <a id="@d.Key-t4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
+        <a id="@d.Key-t5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
+        <a id="@d.Key-t6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
+        <a id="@d.Key-t7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
+    </div>
+}
 
+@foreach (var d in scatterData)
+{
+    <canvas id="@d.Key-scatterData"></canvas>
+    <div>
+        <a id="@d.Key-s0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
+        <a id="@d.Key-s1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
+        <a id="@d.Key-s2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
+        <a id="@d.Key-s3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
+        <a id="@d.Key-s4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
+        <a id="@d.Key-s5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
+        <a id="@d.Key-s6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
+        <a id="@d.Key-s7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
+    </div>
+}
+@* 
 <div>
     <canvas id="powerData"></canvas>
     <div>
@@ -141,9 +251,7 @@
     </div>
 </div>
 
-<br />
-<br />
-<br />
+<br /><br /><br />
 
 <div>
     <canvas id="scatter"></canvas>
@@ -158,4 +266,4 @@
         <a id="s7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
     </div>
 </div>
-    
+     *@

@@ -23,27 +23,16 @@ namespace KnowledgePool.Controllers
             _context= context;
         }
 
-        public ActionResult Index(string set, string searchString, string dataType)
+        public ActionResult Index(List<string> setIds, string dataType, string singleChart = "false")
         {
+            var isSingleChart = singleChart == "true";
             var isAverage = dataType?.Equals("average", StringComparison.OrdinalIgnoreCase) ?? true;
             var sets = new List<Set>();
 
-            if (searchString is not null)
-            {
-                sets = _context.Sets
-                    .Where(_ => (EF.Functions.Like(_.Name, $"%{searchString}%") || EF.Functions.Like(_.Name, $"%{searchString}%")) && (_.Type == "expansion" || _.Type == "core"))
-                    .OrderByDescending(_ => _.ReleaseDate)
-                    .ToList();
-
-            }
-
-            else
-            {
-                sets = _context.Sets
-                    .Where(_ => _.Type == "expansion" || _.Type == "core")
-                    .OrderByDescending(_ => _.ReleaseDate)
-                    .ToList();
-            }
+            sets = _context.Sets
+                .Where(_ => _.Type == "expansion" || _.Type == "core")
+                .OrderByDescending(_ => _.ReleaseDate)
+                .ToList();
 
             var setListSelection = new List<SelectListItem>();
             foreach (var s in sets)
@@ -51,79 +40,189 @@ namespace KnowledgePool.Controllers
                 setListSelection.Add(new SelectListItem { Text = s.Name + $" ({s.Code})", Value = s.Code });
             }
 
-            var setCode = set;
+            var setCodes = setIds;
 
-            //this means input came as full set name
-            if (setCode is not null && setCode.Length > 5)
+            if (!setCodes.Any())
+                    setCodes.Add(_context.Sets
+                        .Where(_ => _.Type == "expansion" || _.Type == "core")
+                        .OrderByDescending(_ => _.ReleaseDate).Select(_ => _.Code)
+                        .First());
+
+            var powerData = new Dictionary<string, string>();
+            var toughnessData = new Dictionary<string, string>();
+            var scatterData = new Dictionary<string, string>();
+
+            if (!isSingleChart)
             {
-                var startIndex = setCode.IndexOf('(') + 1;
-                var endIndex = setCode.IndexOf(')');
+                foreach (var setCode in setCodes)
+                {
+                    var cards = _context.Cards.AsEnumerable().Where(_ => _.SetCode == setCode).DistinctBy(_ => _.Name).ToList();
 
-                setCode = setCode.Substring(startIndex, endIndex - startIndex);
-            }
+                    var creatures = cards
+                        .Where(_ =>
+                        _.Type.Contains("creature", StringComparison.OrdinalIgnoreCase) && 
+                        !_.Power.Contains("*") && 
+                        !_.Toughness.Contains("*") && 
+                        !(_.Power == "0" || _.Toughness == "0"));
 
-            if (setCode is null || !_context.Sets.Any(_ => _.Code == setCode)) setCode = _context.Sets
-                    .Where(_ => _.Type == "expansion" || _.Type == "core")
-                    .OrderByDescending(_ => _.ReleaseDate).Select(_ => _.Code)
-                    .First();
+                    var amd = GetAverageMedianDataByColor(creatures);
 
-            var cards = _context.Cards.AsEnumerable().Where(_ => _.SetCode == setCode).DistinctBy(_ => _.Name).ToList();
+                    if (isAverage)
+                    {
+                        var averagePowers = new Dictionary<string, List<double>>(amd.Select(_ => new KeyValuePair<string, List<double>>
+                            (
+                                _.Key,
+                                _.Value.PowerAverages.ToList()
+                            )));
 
-            var creatures = cards
-                .Where(_ => _.SetCode == setCode 
-                    && _.Type.Contains("creature", StringComparison.OrdinalIgnoreCase) 
-                    && !_.Power.Contains("*") 
-                    && !_.Toughness.Contains("*")
-                    && !(_.Power == "0" || _.Toughness == "0"));
+                        var averageToughnesses = new Dictionary<string, List<double>>(amd.Select(_ => new KeyValuePair<string, List<double>>
+                            (
+                                _.Key,
+                                _.Value.ToughnessAverages.ToList()
+                            )));
 
-            var amdPower = GetAverageMedianData(creatures);
-            var amdToughness = GetAverageMedianData(creatures, false);
+                        powerData.Add(setCode, GetAverageOrMedianJsonByColor(averagePowers, "Power", setCode));
+                        toughnessData.Add(setCode, GetAverageOrMedianJsonByColor(averageToughnesses, "Toughness", setCode));
+                    }
 
-            if (isAverage)
-            {
-                var averagePowers = new Dictionary<string, List<double>>(amdPower.Select(_ => new KeyValuePair<string, List<double>>
-                    (
-                        _.Key,
-                        _.Value.Averages.ToList()
-                    ))); 
+                    else
+                    {
+                        var medianPowers = new Dictionary<string, List<int>>(amd.Select(_ => new KeyValuePair<string, List<int>>
+                        (
+                            _.Key,
+                            _.Value.PowerMedians.ToList()
+                        )));
 
-                var averageToughnesses = new Dictionary<string, List<double>>(amdToughness.Select(_ => new KeyValuePair<string, List<double>>
-                    (
-                        _.Key,
-                        _.Value.Averages.ToList()
-                    )));
+                        var medianToughnesses = new Dictionary<string, List<int>>(amd.Select(_ => new KeyValuePair<string, List<int>>
+                        (
+                            _.Key,
+                            _.Value.ToughnessMedians.ToList()
+                        )));
 
-                ViewData["PowerData"] = GetAverageOrMedianJson(averagePowers, "Power", setCode);
-                ViewData["ToughnessData"] = GetAverageOrMedianJson(averageToughnesses, "Toughness", setCode);
+                        powerData.Add(setCode, GetAverageOrMedianJsonByColor(medianPowers, "Power", setCode));
+                        toughnessData.Add(setCode, GetAverageOrMedianJsonByColor(medianToughnesses, "Toughness", setCode));
+                    }
+
+                    scatterData.Add(setCode, GetBubbleJson(setCode));
+                } 
             }
 
             else
             {
-                var medianPowers = new Dictionary<string, List<int>>(amdPower.Select(_ => new KeyValuePair<string, List<int>>
-                (
-                    _.Key,
-                    _.Value.Medians.ToList()
-                ))); 
+                var cards = _context.Cards.AsEnumerable().Where(_ => setCodes.Contains(_.SetCode)).DistinctBy(_ => _.Name).ToList();
 
-                var medianToughnesses = new Dictionary<string, List<int>>(amdToughness.Select(_ => new KeyValuePair<string, List<int>>
-                (
-                    _.Key,
-                    _.Value.Medians.ToList()
-                )));
+                var creatures = cards
+                    .Where(_ =>
+                    _.Type.Contains("creature", StringComparison.OrdinalIgnoreCase) &&
+                        !_.Power.Contains("*") &&
+                        !_.Toughness.Contains("*") &&
+                        !(_.Power == "0" || _.Toughness == "0"));
 
-                ViewData["PowerData"] = GetAverageOrMedianJson(medianPowers, "Power", setCode);
-                ViewData["ToughnessData"] = GetAverageOrMedianJson(medianToughnesses, "Toughness", setCode);
+                var amd = GetAverageMedianDataBySet(creatures, setCodes);
+
+                if (isAverage)
+                {
+                    var averagePowers = new Dictionary<string, List<double>>(amd.Select(_ => new KeyValuePair<string, List<double>>
+                        (
+                            _.Key,
+                            _.Value.PowerAverages.ToList()
+                        )));
+
+                    var averageToughnesses = new Dictionary<string, List<double>>(amd.Select(_ => new KeyValuePair<string, List<double>>
+                        (
+                            _.Key,
+                            _.Value.ToughnessAverages.ToList()
+                        )));
+
+                    powerData.Add("POWER", GetAverageOrMedianJsonBySet(averagePowers, "Power"));
+                    toughnessData.Add("TOUGHNESS", GetAverageOrMedianJsonBySet(averageToughnesses, "Toughness"));
+                }
+
+                else
+                {
+                    var medianPowers = new Dictionary<string, List<int>>(amd.Select(_ => new KeyValuePair<string, List<int>>
+                    (
+                        _.Key,
+                        _.Value.PowerMedians.ToList()
+                    )));
+
+                    var medianToughnesses = new Dictionary<string, List<int>>(amd.Select(_ => new KeyValuePair<string, List<int>>
+                    (
+                        _.Key,
+                        _.Value.ToughnessMedians.ToList()
+                    )));
+
+                    powerData.Add("POWER", GetAverageOrMedianJsonBySet(medianPowers, "Power"));
+                    toughnessData.Add("TOUGHNESS", GetAverageOrMedianJsonBySet(medianToughnesses, "Toughness"));
+                }
             }
 
-            ViewData["ScatterData"] = GetBubbleJson(set);
-
             ViewBag.setList = setListSelection;
-            ViewBag.fullSetName = _context.Sets.Where(_ => _.Code == setCode).Select(_ => $"{_.Name} ({setCode})").First();
+
+            ViewData["PowerData"] = powerData;
+            ViewData["ToughnessData"] = toughnessData;
+            ViewData["ScatterData"] = scatterData;
 
             return View();
         }
 
-        public string GetAverageOrMedianJson<T>(Dictionary<string, List<T>> data, string PorT, string setCode)
+        public string GetAverageOrMedianJsonBySet<T>(Dictionary<string, List<T>> data, string PorT)
+        {
+            var labelType = typeof(T) == typeof(double) ? "Average" : "Median";
+
+            return JsonConvert.SerializeObject(new
+            {
+                type = "line",
+                data = new
+                {
+                    labels = new List<string> { "0", "1", "2", "3", "4", "5", "6", "7+" },
+                    datasets = data.Select(_ => new
+                    {
+                        label = _.Key,
+                        data = _.Value,
+                    })
+                },
+
+                options = new
+                {
+                    scales = new
+                    {
+                        x = new
+                        {
+                            title = new
+                            {
+                                display = true,
+                                text = "Mana Value"
+                            }
+                        },
+                        y = new
+                        {
+                            title = new
+                            {
+                                display = true,
+                                text = PorT
+                            }
+                        }
+                    },
+
+                    plugins = new
+                    {
+                        title = new
+                        {
+                            display = true,
+                            text = $"{labelType} {PorT} by Mana Cost",
+                            font = new
+                            {
+                                weight = "bold",
+                                size = 18
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        public string GetAverageOrMedianJsonByColor<T>(Dictionary<string, List<T>> data, string PorT, string setCode)
         {
             var labelType = typeof(T) == typeof(double) ? "Average" : "Median";
 
@@ -228,7 +327,7 @@ namespace KnowledgePool.Controllers
                             title = new
                             {
                                 display = true,
-                                text = "Power"
+                                text = PorT
                             }
                         }
                     },
@@ -250,63 +349,49 @@ namespace KnowledgePool.Controllers
             });
         }
 
-        public Dictionary<string, AverageMedianData> GetAverageMedianData(IEnumerable<Card> creatures, bool isPower = true)
+        public Dictionary<string, AverageMedianData> GetAverageMedianDataBySet(IEnumerable<Card> creatures, List<string> setCodes)
         {
             var data = new Dictionary<string, AverageMedianData>();
 
-            foreach (var color in new List<string> { "W", "U", "B", "R", "G", "M", "C", "O"})
+            foreach (var code in setCodes)
             {
-                var values = new List<KeyValuePair<int, int>>();
+                var powerValues = new List<KeyValuePair<int, int>>();
+                var toughnessValues = new List<KeyValuePair<int, int>>();
 
-                if (color == "O")
+                powerValues = creatures
+                    .Where(_ => _.SetCode == code)
+                    .Select(_ => new KeyValuePair<int, int>(
+                        (int)_.ManaValue,
+                        Int32.Parse(_.Power)))
+                    .ToList();
+
+                toughnessValues = creatures
+                    .Where(_ => _.SetCode == code)
+                    .Select(_ => new KeyValuePair<int, int>(
+                        (int)_.ManaValue,
+                        Int32.Parse(_.Toughness)))
+                    .ToList();
+
+                var powerAverages = new List<double>();
+                var powerMedians = new List<int>();
+
+                var toughnessAverages = new List<double>();
+                var toughnessMedians = new List<int>();
+
+                foreach (var mv in new List<int>(Enumerable.Range(0, 8)))
                 {
-                    values = creatures
-                        .Select(_ => new KeyValuePair<int, int>(
-                            (int) _.ManaValue,
-                            Int32.Parse(isPower ? _.Power : _.Toughness)))
-                        .ToList();
-                }
-
-                else if (color == "M")
-                {
-                    values = creatures
-                        .Where(_ => _.Colors.Length > 1)
-                        .Select(_ => new KeyValuePair<int, int>(
-                            (int)_.ManaValue,
-                            Int32.Parse(isPower ? _.Power : _.Toughness)))
-                        .ToList();
-                }
-
-                else if (color == "C")
-                {
-                    values = creatures
-                        .Where(_ => _.Colors == string.Empty)
-                        .Select(_ => new KeyValuePair<int, int>(
-                            (int)_.ManaValue,
-                            Int32.Parse(isPower ? _.Power : _.Toughness)))
-                        .ToList();
-                }
-
-                else
-                {
-                    values = creatures
-                        .Where(_ => _.Colors == color)
-                        .Select(_ => new KeyValuePair<int, int>(
-                            (int)_.ManaValue,
-                            Int32.Parse(isPower ? _.Power : _.Toughness)))
-                        .ToList();
-                }
-
-                var averages = new List<double>();
-                var medians = new List<int>();
-
-                foreach (var mv in new List<int>(Enumerable.Range(0, 8))) 
-                {
-                    var valuesByMv = new List<int>();
+                    var powerValuesByMv = new List<int>();
+                    var toughnessValuesByMv = new List<int>();
 
                     if (mv == 7)
                     {
-                        valuesByMv = values
+                        powerValuesByMv = powerValues
+                            .Where(_ => _.Key >= mv)
+                            .Select(_ => _.Value)
+                            .OrderBy(_ => _)
+                            .ToList();
+
+                        toughnessValuesByMv = toughnessValues
                             .Where(_ => _.Key >= mv)
                             .Select(_ => _.Value)
                             .OrderBy(_ => _)
@@ -315,30 +400,193 @@ namespace KnowledgePool.Controllers
 
                     else
                     {
-                        valuesByMv = values
+                        powerValuesByMv = powerValues
                             .Where(_ => _.Key == mv)
                             .Select(_ => _.Value)
                             .OrderBy(_ => _)
-                            .ToList(); 
+                            .ToList();
+
+                        toughnessValuesByMv = toughnessValues
+                            .Where(_ => _.Key == mv)
+                            .Select(_ => _.Value)
+                            .OrderBy(_ => _)
+                            .ToList();
                     }
 
-                    if (valuesByMv.Any())
+                    if (powerValuesByMv.Any())
                     {
-                        averages.Add(valuesByMv.Average());
-                        medians.Add(valuesByMv.ElementAt(valuesByMv.Count() / 2));
+                        powerAverages.Add(powerValuesByMv.Average());
+                        powerMedians.Add(powerValuesByMv.ElementAt(powerValuesByMv.Count() / 2));
+
+                        toughnessAverages.Add(toughnessValuesByMv.Average());
+                        toughnessMedians.Add(toughnessValuesByMv.ElementAt(toughnessValuesByMv.Count() / 2));
                     }
 
                     else
                     {
-                        averages.Add(0);
-                        medians.Add(0);
+                        powerAverages.Add(0);
+                        powerMedians.Add(0);
+
+                        toughnessAverages.Add(0);
+                        toughnessMedians.Add(0);
                     }
                 }
 
                 var amd = new AverageMedianData
                 {
-                    Averages = averages,
-                    Medians = medians
+                    PowerAverages = powerAverages,
+                    PowerMedians = powerMedians,
+                    ToughnessAverages = toughnessAverages,
+                    ToughnessMedians = toughnessMedians
+                };
+
+                data.Add(code, amd);
+            }
+
+            return data;
+        }
+
+        public Dictionary<string, AverageMedianData> GetAverageMedianDataByColor(IEnumerable<Card> creatures)
+        {
+            var data = new Dictionary<string, AverageMedianData>();
+
+            foreach (var color in new List<string> { "W", "U", "B", "R", "G", "M", "C", "O"})
+            {
+                var powerValues = new List<KeyValuePair<int, int>>();
+                var toughnessValues = new List<KeyValuePair<int, int>>();
+
+                if (color == "O")
+                {
+                    powerValues = creatures
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int) _.ManaValue,
+                            Int32.Parse(_.Power)))
+                        .ToList();
+
+                    toughnessValues = creatures
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int)_.ManaValue,
+                            Int32.Parse(_.Toughness)))
+                        .ToList();
+                }
+
+                else if (color == "M")
+                {
+                    powerValues = creatures
+                        .Where(_ => _.Colors.Length > 1)
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int)_.ManaValue,
+                            Int32.Parse(_.Power)))
+                        .ToList();
+
+                    toughnessValues = creatures
+                        .Where(_ => _.Colors.Length > 1)
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int)_.ManaValue,
+                            Int32.Parse(_.Toughness)))
+                        .ToList();
+                }
+
+                else if (color == "C")
+                {
+                    powerValues = creatures
+                        .Where(_ => _.Colors == string.Empty)
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int)_.ManaValue,
+                            Int32.Parse(_.Power)))
+                        .ToList();
+
+                    toughnessValues = creatures
+                        .Where(_ => _.Colors == string.Empty)
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int)_.ManaValue,
+                            Int32.Parse(_.Toughness)))
+                        .ToList();
+                }
+
+                else
+                {
+                    powerValues = creatures
+                        .Where(_ => _.Colors == color)
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int)_.ManaValue,
+                            Int32.Parse(_.Power)))
+                        .ToList();
+
+                    toughnessValues = creatures
+                        .Where(_ => _.Colors == color)
+                        .Select(_ => new KeyValuePair<int, int>(
+                            (int)_.ManaValue,
+                            Int32.Parse(_.Toughness)))
+                        .ToList();
+                }
+
+                var powerAverages = new List<double>();
+                var powerMedians = new List<int>();
+
+                var toughnessAverages = new List<double>();
+                var toughnessMedians = new List<int>();
+
+                foreach (var mv in new List<int>(Enumerable.Range(0, 8))) 
+                {
+                    var powerValuesByMv = new List<int>();
+                    var toughnessValuesByMv = new List<int>();
+
+                    if (mv == 7)
+                    {
+                        powerValuesByMv = powerValues
+                            .Where(_ => _.Key >= mv)
+                            .Select(_ => _.Value)
+                            .OrderBy(_ => _)
+                            .ToList();
+
+                        toughnessValuesByMv = toughnessValues
+                            .Where(_ => _.Key >= mv)
+                            .Select(_ => _.Value)
+                            .OrderBy(_ => _)
+                            .ToList();
+                    }
+
+                    else
+                    {
+                        powerValuesByMv = powerValues
+                            .Where(_ => _.Key == mv)
+                            .Select(_ => _.Value)
+                            .OrderBy(_ => _)
+                            .ToList();
+
+                        toughnessValuesByMv = toughnessValues
+                            .Where(_ => _.Key == mv)
+                            .Select(_ => _.Value)
+                            .OrderBy(_ => _)
+                            .ToList();
+                    }
+
+                    if (powerValuesByMv.Any())
+                    {
+                        powerAverages.Add(powerValuesByMv.Average());
+                        powerMedians.Add(powerValuesByMv.ElementAt(powerValuesByMv.Count() / 2));
+
+                        toughnessAverages.Add(toughnessValuesByMv.Average());
+                        toughnessMedians.Add(toughnessValuesByMv.ElementAt(toughnessValuesByMv.Count() / 2));
+                    }
+
+                    else
+                    {
+                        powerAverages.Add(0);
+                        powerMedians.Add(0);
+
+                        toughnessAverages.Add(0);
+                        toughnessMedians.Add(0);
+                    }
+                }
+
+                var amd = new AverageMedianData
+                {
+                    PowerAverages = powerAverages,
+                    PowerMedians = powerMedians,
+                    ToughnessAverages = toughnessAverages,
+                    ToughnessMedians = toughnessMedians
                 };
 
                 data.Add(color, amd);
@@ -350,6 +598,8 @@ namespace KnowledgePool.Controllers
         public string GetBubbleJson(string? setCode)
         {
             if (setCode is null) setCode = _context.Sets.Where(_ => _.Type == "expansion" || _.Type == "core").OrderByDescending(_ => _.ReleaseDate).Select(_ => _.Code).First();
+
+            var setName = _context.Sets.First(_ => _.Code == setCode).Name;
 
             var creatures = _context.Cards
                 .Where(_ => _.SetCode == setCode && EF.Functions.Like(_.Type, "%creature%") && !EF.Functions.Like(_.Power, "%*%") && !EF.Functions.Like(_.Toughness, "%*%"));
@@ -546,7 +796,7 @@ namespace KnowledgePool.Controllers
                         title = new
                         {
                             display = true,
-                            text = $"Power and Toughness Bubble Map",
+                            text = $"Power and Toughness Bubble Map: {setName}",
                             font = new
                             {
                                 weight = "bold",
@@ -577,13 +827,15 @@ namespace KnowledgePool.Controllers
 
     public class AverageMedianData
     {
-        public IEnumerable<int>? Medians { get; set; }
-        public IEnumerable<double>? Averages { get; set; }
+        public IEnumerable<int>? PowerMedians { get; set; }
+        public IEnumerable<double>? PowerAverages { get; set; }
+        public IEnumerable<int>? ToughnessMedians { get; set; }
+        public IEnumerable<double>? ToughnessAverages { get; set; }
     }
 
     public static class Colors
     {
-        public const string White = "#FDFF7C";
+        public const string White = "#E0E84A";
         public const string Blue = "#2800FE";
         public const string Black = "#000000";
         public const string Red = "#FF0000";
