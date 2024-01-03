@@ -99,15 +99,19 @@
                         setButton.innerText = setInput;
                         setButton.setAttribute('id', opt.textContent);
                         setButton.classList.add('set-button');
-                        //setButton.setAttribute('name', 'sets');
 
                         const hiddenInput = document.createElement('input');
+                        hiddenInput.setAttribute('id', opt.textContent + "_input");
                         hiddenInput.setAttribute('value', opt.textContent);
-                        hiddenInput.setAttribute('name', 'setIds')
+                        hiddenInput.setAttribute('name', 'setIds');
                         hiddenInput.style = 'display:none';
 
                         setButton.addEventListener('click', function () {
                             searchedSets.removeChild(setButton);
+
+                            const inputToRemove = document.getElementById(opt.textContent + "_input");
+                            searchedSets.removeChild(inputToRemove);
+
                             saveSearchToStorage();
                         });
 
@@ -179,91 +183,56 @@
 @foreach (var d in powerData)
 {
     <canvas id="@d.Key-powerData"></canvas>
-    <div>
-        <a id="@d.Key-p0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
-        <a id="@d.Key-p1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
-        <a id="@d.Key-p2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
-        <a id="@d.Key-p3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
-        <a id="@d.Key-p4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
-        <a id="@d.Key-p5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
-        <a id="@d.Key-p6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
-        <a id="@d.Key-p7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
-    </div>
+
+    @if (!Context.Request.QueryString.Value.Contains("singleChart=true"))
+    {
+        <div>
+            <a id="@d.Key-p0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
+            <a id="@d.Key-p1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
+            <a id="@d.Key-p2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
+            <a id="@d.Key-p3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
+            <a id="@d.Key-p4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
+            <a id="@d.Key-p5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
+            <a id="@d.Key-p6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
+            <a id="@d.Key-p7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
+        </div>
+    }
 }
 
 @foreach (var d in toughnessData)
 {
     <canvas id="@d.Key-toughnessData"></canvas>
-    <div>
-        <a id="@d.Key-t0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
-        <a id="@d.Key-t1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
-        <a id="@d.Key-t2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
-        <a id="@d.Key-t3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
-        <a id="@d.Key-t4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
-        <a id="@d.Key-t5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
-        <a id="@d.Key-t6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
-        <a id="@d.Key-t7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
-    </div>
+
+    @if (!Context.Request.QueryString.Value.Contains("singleChart=true"))
+    {
+        <div>
+            <a id="@d.Key-t0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
+            <a id="@d.Key-t1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
+            <a id="@d.Key-t2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
+            <a id="@d.Key-t3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
+            <a id="@d.Key-t4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
+            <a id="@d.Key-t5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
+            <a id="@d.Key-t6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
+            <a id="@d.Key-t7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
+        </div>
+    }
 }
 
 @foreach (var d in scatterData)
 {
     <canvas id="@d.Key-scatterData"></canvas>
-    <div>
-        <a id="@d.Key-s0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
-        <a id="@d.Key-s1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
-        <a id="@d.Key-s2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
-        <a id="@d.Key-s3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
-        <a id="@d.Key-s4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
-        <a id="@d.Key-s5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
-        <a id="@d.Key-s6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
-        <a id="@d.Key-s7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
-    </div>
+
+    @if (!Context.Request.QueryString.Value.Contains("singleChart=true"))
+    {
+        <div>
+            <a id="@d.Key-s0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
+            <a id="@d.Key-s1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
+            <a id="@d.Key-s2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
+            <a id="@d.Key-s3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
+            <a id="@d.Key-s4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
+            <a id="@d.Key-s5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
+            <a id="@d.Key-s6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
+            <a id="@d.Key-s7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
+        </div>
+    }
 }
-@* 
-<div>
-    <canvas id="powerData"></canvas>
-    <div>
-        <a id="p0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
-        <a id="p1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
-        <a id="p2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
-        <a id="p3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
-        <a id="p4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
-        <a id="p5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
-        <a id="p6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
-        <a id="p7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
-    </div>
-</div>
-
-<br /><br /><br />
-
-<div>
-    <canvas id="toughnessData"></canvas>
-    <div>
-        <a id="t0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
-        <a id="t1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
-        <a id="t2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
-        <a id="t3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
-        <a id="t4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
-        <a id="t5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
-        <a id="t6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
-        <a id="t7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
-    </div>
-</div>
-
-<br /><br /><br />
-
-<div>
-    <canvas id="scatter"></canvas>
-    <div>
-        <a id="s0" class="chart-action" onclick="toggleData(this)">Toggle White</a>
-        <a id="s1" class="chart-action" onclick="toggleData(this)">Toggle Blue</a>
-        <a id="s2" class="chart-action" onclick="toggleData(this)">Toggle Black</a>
-        <a id="s3" class="chart-action" onclick="toggleData(this)">Toggle Red</a>
-        <a id="s4" class="chart-action" onclick="toggleData(this)">Toggle Green</a>
-        <a id="s5" class="chart-action" onclick="toggleData(this)">Toggle Gold</a>
-        <a id="s6" class="chart-action" onclick="toggleData(this)">Toggle Colorless</a>
-        <a id="s7" class="chart-action" onclick="toggleData(this)">Toggle Overall</a>
-    </div>
-</div>
-     *@

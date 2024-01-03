@@ -2,15 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Dynamic;
-using System.Drawing;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using System.Runtime.CompilerServices;
-using NuGet.Common;
 using Newtonsoft.Json;
-using System.Reflection;
-using System.Reflection.Emit;
 
 namespace KnowledgePool.Controllers
 {
@@ -45,7 +37,8 @@ namespace KnowledgePool.Controllers
             if (!setCodes.Any())
                     setCodes.Add(_context.Sets
                         .Where(_ => _.Type == "expansion" || _.Type == "core")
-                        .OrderByDescending(_ => _.ReleaseDate).Select(_ => _.Code)
+                        .OrderByDescending(_ => _.ReleaseDate)
+                        .Select(_ => _.Code)
                         .First());
 
             var powerData = new Dictionary<string, string>();
@@ -683,7 +676,8 @@ namespace KnowledgePool.Controllers
                             data = creaturesDict["W"],
                             hidden = true,
                             borderColor = Colors.Black,
-                            backgroundColor = Colors.White + "80"
+                            backgroundColor = Colors.White + "80",
+                            bubbleRadius = 10
                         },
 
                         new
@@ -692,7 +686,8 @@ namespace KnowledgePool.Controllers
                             data = creaturesDict["U"],
                             hidden = true,
                             borderColor = Colors.Black,
-                            backgroundColor = Colors.Blue + "80"
+                            backgroundColor = Colors.Blue + "80",
+                            bubbleRadius = 10
                         },
                         new
                         {
@@ -700,7 +695,8 @@ namespace KnowledgePool.Controllers
                             data = creaturesDict["B"],
                             hidden = true,
                             borderColor = Colors.Black,
-                            backgroundColor = Colors.Black + "80"
+                            backgroundColor = Colors.Black + "80",
+                            bubbleRadius = 10
                         },
 
                         new
@@ -709,7 +705,8 @@ namespace KnowledgePool.Controllers
                             data = creaturesDict["R"],
                             hidden = true,
                             borderColor = Colors.Black,
-                            backgroundColor = Colors.Red + "80"
+                            backgroundColor = Colors.Red + "80",
+                            bubbleRadius = 10
                         },
 
                         new
@@ -718,7 +715,8 @@ namespace KnowledgePool.Controllers
                             data = creaturesDict["G"],
                             hidden = true,
                             borderColor = Colors.Black,
-                            backgroundColor = Colors.Green + "80"
+                            backgroundColor = Colors.Green + "80",
+                            bubbleRadius = 10
                         },
 
                         new
@@ -727,7 +725,8 @@ namespace KnowledgePool.Controllers
                             data = creaturesDict["M"],
                             hidden = true,
                             borderColor = "#000000",
-                            backgroundColor = Colors.Gold + "80"
+                            backgroundColor = Colors.Gold + "80",
+                            bubbleRadius = 10
                         },
 
                         new
@@ -736,7 +735,8 @@ namespace KnowledgePool.Controllers
                             data = creaturesDict["C"],
                             hidden = true,
                             borderColor = Colors.Black,
-                            backgroundColor = Colors.Colorless + "80"
+                            backgroundColor = Colors.Colorless + "80",
+                            bubbleRadius = 10
                         },
 
                         new
@@ -745,7 +745,8 @@ namespace KnowledgePool.Controllers
                             data = creaturesDict["O"],
                             hidden = false,
                             borderColor = Colors.Black,
-                            backgroundColor = Colors.All + "80"
+                            backgroundColor = Colors.All + "80",
+                            bubbleRadius = 10
 
                         }
                     }
@@ -802,14 +803,6 @@ namespace KnowledgePool.Controllers
                                 weight = "bold",
                                 size = 18
                             }
-                        }
-                    },
-
-                    elements = new
-                    {
-                        point = new
-                        {
-                            rmin = 20
                         }
                     }
                 }
