@@ -1,0 +1,66 @@
+﻿@model KnowledgePool.Models.WinRate
+
+@{
+    ViewData["Title"] = "Details";
+}
+
+<h1>Details</h1>
+
+<div>
+    <h4>WinRate</h4>
+    <hr />
+    <dl class="row">
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.Name)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.Name)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.Set)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.Set)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.Color)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.Color)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.Rarity)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.Rarity)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.OhWr)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.OhWr)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.GdWr)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.GdWr)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.GihWr)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.GihWr)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.Iwd)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.Iwd)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.Uuid">Edit</a> |
+    <a asp-action="Index">Back to List</a>
+</div>
