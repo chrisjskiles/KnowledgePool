@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System.Reflection.Emit;
 
 namespace KnowledgePool.Controllers
 {
@@ -19,24 +20,14 @@ namespace KnowledgePool.Controllers
         {
             var isSingleChart = singleChart == "true";
             var isAverage = dataType?.Equals("average", StringComparison.OrdinalIgnoreCase) ?? true;
-            var sets = new List<Set>();
 
-            sets = _context.Sets
-                .Where(_ => _.Type == "expansion" || _.Type == "core")
-                .OrderByDescending(_ => _.ReleaseDate)
-                .ToList();
-
-            var setListSelection = new List<SelectListItem>();
-            foreach (var s in sets)
-            {
-                setListSelection.Add(new SelectListItem { Text = s.Name + $" ({s.Code})", Value = s.Code });
-            }
+            var setListSelection = GetSetSelectionList();
 
             var setCodes = setIds;
 
             if (!setCodes.Any())
                     setCodes.Add(_context.Sets
-                        .Where(_ => _.Type == "expansion" || _.Type == "core")
+                        .Where(_ => _.Type == "expansion" || _.Type == "core" || _.Type == "masters")
                         .OrderByDescending(_ => _.ReleaseDate)
                         .Select(_ => _.Code)
                         .First());
@@ -159,188 +150,34 @@ namespace KnowledgePool.Controllers
             return View();
         }
 
-        public string GetAverageOrMedianJsonBySet<T>(Dictionary<string, List<T>> data, string PorT)
+        public ActionResult WinRateData(List<string> setIds)
         {
-            var labelType = typeof(T) == typeof(double) ? "Average" : "Median";
+            var setListSelection = GetSetSelectionList();
 
-            return JsonConvert.SerializeObject(new
-            {
-                type = "line",
-                data = new
-                {
-                    labels = new List<string> { "0", "1", "2", "3", "4", "5", "6", "7+" },
-                    datasets = data.Select(_ => new
-                    {
-                        label = _.Key,
-                        data = _.Value,
-                    })
-                },
+            var setsWithWinRateData = _context.WinRates.Select(_ => _.Set).Distinct();
+            setListSelection = setListSelection.Where(_ => setsWithWinRateData.Contains(_.Value)).ToList();
 
-                options = new
-                {
-                    scales = new
-                    {
-                        x = new
-                        {
-                            title = new
-                            {
-                                display = true,
-                                text = "Mana Value"
-                            }
-                        },
-                        y = new
-                        {
-                            title = new
-                            {
-                                display = true,
-                                text = PorT
-                            }
-                        }
-                    },
+            if (!setIds.Any())
+                setIds.Add(_context.Sets
+                    .Where(_ => (_.Type == "expansion" || _.Type == "core" || _.Type == "masters") && setsWithWinRateData.Contains(_.Code))
+                    .OrderByDescending(_ => _.ReleaseDate)
+                    .Select(_ => _.Code)
+                    .First());
 
-                    plugins = new
-                    {
-                        title = new
-                        {
-                            display = true,
-                            text = $"{labelType} {PorT} by Mana Cost",
-                            font = new
-                            {
-                                weight = "bold",
-                                size = 18
-                            }
-                        }
-                    }
-                }
-            });
+            var wrByMv = GetWinrateJsonByManaValue(setIds.First());
+            var wrByLength = GetWinrateJsonByTextLength(setIds.First());
+            var wrByColor = GetWinrateJsonByColor(setIds.First());
+
+            ViewBag.setList = setListSelection;
+
+            ViewData["WinRateByMv"] = wrByMv;
+            ViewData["WinRateByLength"] = wrByLength;
+            ViewData["WinRateByColor"] = wrByColor;
+
+            return View();
         }
 
-        public string GetAverageOrMedianJsonByColor<T>(Dictionary<string, List<T>> data, string PorT, string setCode)
-        {
-            var labelType = typeof(T) == typeof(double) ? "Average" : "Median";
-
-            var setName = _context.Sets.First(_ => _.Code == setCode).Name;
-
-            return JsonConvert.SerializeObject(new
-            {
-                type = "line",
-                data = new
-                {
-                    labels = new List<string> { "0", "1", "2", "3", "4", "5", "6", "7+" },
-                    datasets = new[]
-                    {
-                        new
-                        {
-                            label = "White",
-                            data = data["W"],
-                            borderColor = Colors.White,
-                            backgroundColor = Colors.White,
-                            hidden = true
-                        },
-
-                        new
-                        {
-                            label = "Blue",
-                            data = data["U"],
-                            borderColor = Colors.Blue,
-                            backgroundColor = Colors.Blue,
-                            hidden = true
-                        },
-
-                        new
-                        {
-                            label = "Black",
-                            data = data["B"],
-                            borderColor = Colors.Black,
-                            backgroundColor = Colors.Black,
-                            hidden = true
-                        },
-
-                        new
-                        {
-                            label = "Red",
-                            data = data["R"],
-                            borderColor = Colors.Red,
-                            backgroundColor = Colors.Red,
-                            hidden = true
-                        },
-
-                        new
-                        {
-                            label = "Green",
-                            data = data["G"],
-                            borderColor = Colors.Green,
-                            backgroundColor = Colors.Green,
-                            hidden = true
-                        },
-
-                        new
-                        {
-                            label = "Gold",
-                            data = data["M"],
-                            borderColor = Colors.Gold,
-                            backgroundColor = Colors.Gold,
-                            hidden = true
-                        },
-
-                        new
-                        {
-                            label = "Colorless",
-                            data = data["C"],
-                            borderColor = Colors.Colorless,
-                            backgroundColor = Colors.Colorless,
-                            hidden = true
-                        },
-
-                        new
-                        {
-                            label = "All Creatures",
-                            data = data["O"],
-                            borderColor = Colors.All,
-                            backgroundColor = Colors.All,
-                            hidden = false
-                        }
-                    }
-                },
-
-                options = new
-                {
-                    scales = new
-                    {
-                        x = new
-                        {
-                            title = new
-                            {
-                                display = true,
-                                text = "Mana Value"
-                            }
-                        },
-                        y = new
-                        {
-                            title = new
-                            {
-                                display = true,
-                                text = PorT
-                            }
-                        }
-                    },
-
-                    plugins = new
-                    {
-                        title = new
-                        {
-                            display = true,
-                            text = $"{labelType} {PorT} by Mana Cost: {setName}",
-                            font = new
-                            {
-                                weight = "bold",
-                                size = 18
-                            }
-                        }
-                    }
-                }
-            });
-        }
+        #region Helper Methods
 
         public Dictionary<string, AverageMedianData> GetAverageMedianDataBySet(IEnumerable<Card> creatures, List<string> setCodes)
         {
@@ -588,6 +425,209 @@ namespace KnowledgePool.Controllers
             return data;
         }
 
+        public List<SelectListItem> GetSetSelectionList()
+        {
+            var sets = _context.Sets
+                .Where(_ => _.Type == "expansion" || _.Type == "core" || _.Type == "masters")
+                .OrderByDescending(_ => _.ReleaseDate)
+                .ToList();
+
+            var setListSelection = new List<SelectListItem>();
+            foreach (var s in sets)
+            {
+                setListSelection.Add(new SelectListItem { Text = s.Name + $" ({s.Code})", Value = s.Code });
+            }
+
+            return setListSelection;
+        }
+
+        #endregion
+
+        #region Json Methods
+
+        public string GetAverageOrMedianJsonBySet<T>(Dictionary<string, List<T>> data, string PorT)
+        {
+            var labelType = typeof(T) == typeof(double) ? "Average" : "Median";
+
+            return JsonConvert.SerializeObject(new
+            {
+                type = "line",
+                data = new
+                {
+                    labels = new List<string> { "0", "1", "2", "3", "4", "5", "6", "7+" },
+                    datasets = data.Select(_ => new
+                    {
+                        label = _.Key,
+                        data = _.Value,
+                    })
+                },
+
+                options = new
+                {
+                    scales = new
+                    {
+                        x = new
+                        {
+                            title = new
+                            {
+                                display = true,
+                                text = "Mana Value"
+                            }
+                        },
+                        y = new
+                        {
+                            title = new
+                            {
+                                display = true,
+                                text = PorT
+                            }
+                        }
+                    },
+
+                    plugins = new
+                    {
+                        title = new
+                        {
+                            display = true,
+                            text = $"{labelType} {PorT} by Mana Cost",
+                            font = new
+                            {
+                                weight = "bold",
+                                size = 18
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        public string GetAverageOrMedianJsonByColor<T>(Dictionary<string, List<T>> data, string PorT, string setCode)
+        {
+            var labelType = typeof(T) == typeof(double) ? "Average" : "Median";
+
+            var setName = _context.Sets.First(_ => _.Code == setCode).Name;
+
+            return JsonConvert.SerializeObject(new
+            {
+                type = "line",
+                data = new
+                {
+                    labels = new List<string> { "0", "1", "2", "3", "4", "5", "6", "7+" },
+                    datasets = new[]
+                    {
+                        new
+                        {
+                            label = "White",
+                            data = data["W"],
+                            borderColor = Colors.White,
+                            backgroundColor = Colors.White,
+                            hidden = true
+                        },
+
+                        new
+                        {
+                            label = "Blue",
+                            data = data["U"],
+                            borderColor = Colors.Blue,
+                            backgroundColor = Colors.Blue,
+                            hidden = true
+                        },
+
+                        new
+                        {
+                            label = "Black",
+                            data = data["B"],
+                            borderColor = Colors.Black,
+                            backgroundColor = Colors.Black,
+                            hidden = true
+                        },
+
+                        new
+                        {
+                            label = "Red",
+                            data = data["R"],
+                            borderColor = Colors.Red,
+                            backgroundColor = Colors.Red,
+                            hidden = true
+                        },
+
+                        new
+                        {
+                            label = "Green",
+                            data = data["G"],
+                            borderColor = Colors.Green,
+                            backgroundColor = Colors.Green,
+                            hidden = true
+                        },
+
+                        new
+                        {
+                            label = "Gold",
+                            data = data["M"],
+                            borderColor = Colors.Gold,
+                            backgroundColor = Colors.Gold,
+                            hidden = true
+                        },
+
+                        new
+                        {
+                            label = "Colorless",
+                            data = data["C"],
+                            borderColor = Colors.Colorless,
+                            backgroundColor = Colors.Colorless,
+                            hidden = true
+                        },
+
+                        new
+                        {
+                            label = "All Creatures",
+                            data = data["O"],
+                            borderColor = Colors.All,
+                            backgroundColor = Colors.All,
+                            hidden = false
+                        }
+                    }
+                },
+
+                options = new
+                {
+                    scales = new
+                    {
+                        x = new
+                        {
+                            title = new
+                            {
+                                display = true,
+                                text = "Mana Value"
+                            }
+                        },
+                        y = new
+                        {
+                            title = new
+                            {
+                                display = true,
+                                text = PorT
+                            }
+                        }
+                    },
+
+                    plugins = new
+                    {
+                        title = new
+                        {
+                            display = true,
+                            text = $"{labelType} {PorT} by Mana Cost: {setName}",
+                            font = new
+                            {
+                                weight = "bold",
+                                size = 18
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         public string GetBubbleJson(string? setCode)
         {
             if (setCode is null) setCode = _context.Sets.Where(_ => _.Type == "expansion" || _.Type == "core").OrderByDescending(_ => _.ReleaseDate).Select(_ => _.Code).First();
@@ -809,7 +849,213 @@ namespace KnowledgePool.Controllers
             });
         }
 
+        public string GetWinrateJsonByManaValue(string? setCode)
+        {
+            var cards = _context.Cards.Where(_ => _.SetCode == setCode);
+            var winRates = _context.WinRates.Where(_ => _.Set == setCode);
+
+            var joined = cards.Join(
+                winRates,
+                card => card.Uuid,
+                winRate => winRate.Uuid,
+                (card, winRate) => new
+                {
+                    x = card.ManaValue,
+                    y = winRate.GihWr
+                })
+                .Where(_ => _.y != null)
+                .ToList();
+
+            return JsonConvert.SerializeObject(new
+            {
+                type = "scatter",
+                data = new
+                {
+                    datasets = new[]
+                    {
+                        new
+                        {
+                            label = "Win Rate by Mana Value",
+                            data = joined,
+                            trendlineLinear = new
+                            {
+                                lineStyle = "solid",
+                                width = 2
+                            }
+                        }
+                    }
+                },
+                options = new
+                {
+                }
+            });
+        }
+
+        public string GetWinrateJsonByTextLength(string? setCode)
+        {
+            var cards = _context.Cards.Where(_ => _.SetCode == setCode);
+            var winRates = _context.WinRates.Where(_ => _.Set == setCode);
+
+            var joined = cards.Join(
+                winRates,
+                card => card.Uuid,
+                winRate => winRate.Uuid,
+                (card, winRate) => new
+                {
+                    x = card.Text != null ? card.Text.Length : 0,
+                    y = winRate.GihWr
+                })
+                .Where(_ => _.y != null)
+                .ToList();
+
+            return JsonConvert.SerializeObject(new
+            {
+                type = "scatter",
+                data = new
+                {
+                    datasets = new[]
+                    {
+                        new
+                        {
+                            label = "Win Rate by Rules Text Length",
+                            data = joined,
+                            trendlineLinear = new
+                            {
+                                lineStyle = "solid",
+                                width = 2
+                            }
+                        }
+                    }
+                },
+                options = new
+                {
+                }
+            });
+        }
+
+        public string GetWinrateJsonByColor(string setCode)
+        {
+            var winRates = _context.WinRates.Where(_ => _.Set == setCode && _.GihWr != null);
+
+            var wrAvgs = new Dictionary<string, decimal>();
+            var wrMeds = new Dictionary<string, decimal>();
+
+            foreach (var color in new List<string>() { "W", "U", "B", "R", "G", "M", "C", "O"})
+            {
+                var wrs = new List<decimal>();
+
+                if (color == "O")
+                    wrs = winRates.Select(_ => _.GihWr ?? 0).ToList();
+
+                else if (color == "M")
+                    wrs = winRates.Where(_ => _.Color.Length > 1).Select(_ => _.GihWr ?? 0).ToList();
+
+                else if (color == "C")
+                    wrs = winRates.Where(_ => _.Color.Length == 0).Select(_ => _.GihWr ?? 0).ToList();
+
+                else
+                    wrs = winRates.Where(_ => _.Color == color).Select(_ => _.GihWr ?? 0).ToList();
+
+                wrs.Sort();
+
+                wrAvgs.Add(color, wrs.Average());
+                wrMeds.Add(color, wrs.ElementAt(wrs.Count / 2));
+            }
+
+            return JsonConvert.SerializeObject(new
+            {
+                type = "bar",
+                data = new
+                {
+                    labels = new List<string> { "Average", "Median" },
+                    datasets = new[]
+                    {
+                        new
+                        {
+                            label = "Overall",
+                            data = new[] { wrAvgs["O"], wrMeds["O"] },
+                            borderColor = new[] { Colors.All, Colors.All },
+                            backgroundColor = new[] { Colors.All + 80, Colors.All + 80 }
+                        },
+
+                        new
+                        {
+                            label = "White",
+                            data = new[] { wrAvgs["W"], wrMeds["W"] },
+                            borderColor = new[] { Colors.White, Colors.White },
+                            backgroundColor = new[] { Colors.White + 80, Colors.White + 80 }
+                        },
+
+                        new
+                        {
+                            label = "Blue",
+                            data = new[] { wrAvgs["U"], wrMeds["U"] },
+                            borderColor = new[] { Colors.Blue, Colors.Blue },
+                            backgroundColor = new[] { Colors.Blue + 80, Colors.Blue + 80 }
+                        },
+
+                        new
+                        {
+                            label = "Black",
+                            data = new[] { wrAvgs["B"], wrMeds["B"] },
+                            borderColor = new[] { Colors.Black, Colors.Black },
+                            backgroundColor = new[] { Colors.Black + 80, Colors.Black + 80 }
+                        },
+
+                        new
+                        {
+                            label = "Red",
+                            data = new[] { wrAvgs["R"], wrMeds["R"] },
+                            borderColor = new[] { Colors.Red, Colors.Red },
+                            backgroundColor = new[] { Colors.Red + 80, Colors.Red + 80 }
+                        },
+
+                        new
+                        {
+                            label = "Green",
+                            data = new[] { wrAvgs["G"], wrMeds["G"] },
+                            borderColor = new[] { Colors.Green, Colors.Green },
+                            backgroundColor = new[] { Colors.Green + 80, Colors.Green + 80 }
+                        },
+
+                        new
+                        {
+                            label = "Multicolor",
+                            data = new[] { wrAvgs["M"], wrMeds["M"] },
+                            borderColor = new[] { Colors.Gold, Colors.Gold },
+                            backgroundColor = new[] { Colors.Gold + 80, Colors.Gold + 80 }
+                        },
+
+                        new
+                        {
+                            label = "Colorless",
+                            data = new[] { wrAvgs["C"], wrMeds["C"] },
+                            borderColor = new[] { Colors.Colorless, Colors.Colorless },
+                            backgroundColor = new[] { Colors.Colorless + 80, Colors.Colorless + 80 }
+                        },
+                    },
+                },
+                options = new
+                {
+                    //indexAxis = "y",
+                    minBarLength = 10,
+                    scales = new
+                    {
+                        y = new
+                        {
+                            beginAtZero = false
+                        }
+                    }
+                }
+            });
+
+            return string.Empty;
+        }
+
+        #endregion
     }
+
+    #region Helper Classes
 
     public class ScatterDataPoint
     {
@@ -837,4 +1083,6 @@ namespace KnowledgePool.Controllers
         public const string Colorless = "#705336";
         public const string All = "#A60092";
     }
+
+    #endregion
 }

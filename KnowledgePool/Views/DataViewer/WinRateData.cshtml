@@ -1,0 +1,93 @@
+﻿
+@{
+    ViewData["Title"] = "Win Rate Data";
+}
+
+@section scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-trendline"></script>
+    <script type="text/javascript">
+        const wrByMvChart = document.getElementById('winRateByMv');
+        const wrByMvChartJson = JSON.parse('@Html.Raw(ViewData["WinRateByMv"])');
+        new Chart(wrByMvChart, wrByMvChartJson);
+
+        const wrByLengthChart = document.getElementById('winRateByLength');
+        const wrByLengthChartJson = JSON.parse('@Html.Raw(ViewData["WinRateByLength"])');
+        new Chart(wrByLengthChart, wrByLengthChartJson);
+
+        const wrByColorChart = document.getElementById('winRateByColor');
+        const wrByColorChartJson = JSON.parse('@Html.Raw(ViewData["WinRateByColor"])');
+        new Chart(wrByColorChart, wrByColorChartJson);
+
+        function addSearch(setInput) {
+            const opts = Array.from(document.getElementById("setList").children);
+
+            const searchedSets = document.getElementById('searchedSets');
+            const existingButtons = Array.from(searchedSets.children, ({ textContent }) => textContent);
+
+            //creates a button for each searched set
+            if (!existingButtons.includes(setInput)) {
+                opts.forEach((opt) => {
+                    if (opt.value == setInput) {
+                        const setButton = document.createElement('button');
+                        setButton.innerText = setInput;
+                        setButton.setAttribute('id', opt.textContent);
+                        setButton.classList.add('set-button');
+
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.setAttribute('id', opt.textContent + "_input");
+                        hiddenInput.setAttribute('value', opt.textContent);
+                        hiddenInput.setAttribute('name', 'setIds');
+                        hiddenInput.style = 'display:none';
+
+                        setButton.addEventListener('click', function () {
+                            searchedSets.removeChild(setButton);
+
+                            const inputToRemove = document.getElementById(opt.textContent + "_input");
+                            searchedSets.removeChild(inputToRemove);
+
+                            saveSearchToStorage();
+                        });
+
+                        searchedSets.appendChild(setButton);
+                        searchedSets.appendChild(hiddenInput);
+                        saveSearchToStorage();
+                    }
+                });
+            }
+
+            document.getElementById('set').value = '';
+        }
+    </script>
+}
+
+<h2>Set Search</h2>
+<p>
+    @using (Html.BeginForm("WinRateData", "DataViewer", FormMethod.Get))
+    {
+    <p>
+        <label for="setList">Type the set name: </label>
+        <input list="setList" id="set" oninput="addSearch(this.value)" />
+        <datalist id="setList" name="setList">
+                @foreach (SelectListItem sli in ViewBag.setList)
+                {
+                    <option value=@sli.Text>@sli.Value</option>
+                }
+        </datalist>
+        <br>
+
+        <div id="searchedSets">
+            <!--sets will be added here as searched-->
+        </div>
+        <br>
+
+        <input type="submit" value="Submit">
+    </p>
+    }
+</p>
+
+<canvas id="winRateByMv"></canvas>
+
+<canvas id="winRateByLength"></canvas>
+
+<canvas id="winRateByColor"></canvas>

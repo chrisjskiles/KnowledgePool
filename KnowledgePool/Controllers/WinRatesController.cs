@@ -211,7 +211,20 @@ namespace KnowledgePool.Controllers
 
         public string GetUuid(string cardName, string setCode)
         {
-            return _context.Cards.First(_ => _.Name.StartsWith(cardName) && _.SetCode == setCode && _.PromoTypes == null).Uuid;
+            try
+            {
+                var bonusSheetCode = _context.Sets.Any(_ => _.ParentCode == setCode && _.Type == "masterpiece") ? _context.Sets.First(_ => _.ParentCode == setCode && _.Type == "masterpiece").Code : string.Empty;
+                return _context.Cards.First(_ => 
+                    _.Name.StartsWith(cardName) && 
+                    ((_.SetCode == setCode && _.PromoTypes == null) || 
+                    _.SetCode == bonusSheetCode))
+                    .Uuid;
+
+            }
+            catch (Exception e)
+            {
+                throw;
+            }        
         }
     }
 }
