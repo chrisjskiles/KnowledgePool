@@ -1,0 +1,84 @@
+﻿@model IEnumerable<KnowledgePool.Models.WinRate>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1><br />
+
+@using (Html.BeginForm("UploadWinRates", "WinRates", FormMethod.Post, new {enctype = "multipart/form-data"}))
+{
+    <h4>Upload Win Rates</h4><br />
+    <input type="file" name="File"/><br />
+    <input type="submit" value="Upload"/><br /><br />
+}
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.Name)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Set)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Color)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Rarity)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.OhWr)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.GdWr)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.GihWr)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Iwd)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.Name)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Set)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Color)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Rarity)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.OhWr)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.GdWr)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.GihWr)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Iwd)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.Uuid">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.Uuid">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.Uuid">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>
