@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System.Collections.Immutable;
+using System.Reflection;
 using System.Reflection.Emit;
 
 namespace KnowledgePool.Controllers
@@ -150,7 +152,7 @@ namespace KnowledgePool.Controllers
             return View();
         }
 
-        public ActionResult WinRateData(List<string> setIds)
+        public ActionResult WinRateData(List<string> setIds, string excludeRares = "false")
         {
             var setListSelection = GetSetSelectionList();
 
@@ -164,9 +166,9 @@ namespace KnowledgePool.Controllers
                     .Select(_ => _.Code)
                     .First());
 
-            var wrByMv = GetWinrateJsonByManaValue(setIds.First());
-            var wrByLength = GetWinrateJsonByTextLength(setIds.First());
-            var wrByColor = GetWinrateJsonByColor(setIds.First());
+            var wrByMv = GetWinrateJsonByManaValue(setIds.First(), excludeRares == "true");
+            var wrByLength = GetWinrateJsonByTextLength(setIds.First(), excludeRares == "true");
+            var wrByColor = GetWinrateJsonByColor(setIds.First(), excludeRares == "true");
 
             ViewBag.setList = setListSelection;
 
@@ -849,10 +851,16 @@ namespace KnowledgePool.Controllers
             });
         }
 
-        public string GetWinrateJsonByManaValue(string? setCode)
+        public string GetWinrateJsonByManaValue(string? setCode, bool excludeRares = false)
         {
             var cards = _context.Cards.Where(_ => _.SetCode == setCode);
             var winRates = _context.WinRates.Where(_ => _.Set == setCode);
+
+            if (excludeRares)
+            {
+                winRates = winRates.Where(_ => _.Rarity != "M" && _.Rarity != "R");
+                cards = cards.Where(_ => _.Rarity != "M" && _.Rarity != "R");
+            }
 
             var joined = cards.Join(
                 winRates,
@@ -860,41 +868,97 @@ namespace KnowledgePool.Controllers
                 winRate => winRate.Uuid,
                 (card, winRate) => new
                 {
-                    x = card.ManaValue,
-                    y = winRate.GihWr
+                    card.ManaValue,
+                    winRate.GihWr
                 })
-                .Where(_ => _.y != null)
+                .Where(_ => _.GihWr != null)
                 .ToList();
 
+            var avgs = new Dictionary<int, decimal>();
+            var meds = new Dictionary<int, decimal>();
+            var avgAndMeds = new Dictionary<int, Tuple<decimal, decimal>>();
+
+            foreach (var mv in joined.Select(_ => (int) _.ManaValue).Distinct())
+            {
+                var wrs = joined.Where(_ => _.ManaValue == mv).Select(_ => _.GihWr ?? 0).ToList();
+                wrs.Sort();
+
+                var avg = wrs.Average();
+                var med = wrs.ElementAt(wrs.Count / 2);
+
+                avgs.Add(mv, avg);
+                meds.Add(mv, med);
+                avgAndMeds.Add(mv, new Tuple<decimal, decimal>(avg, med));
+            }
+
+            var data = avgAndMeds.Select(_ => new
+            {
+                label = _.Key,
+                data = new[] { _.Value.Item1, _.Value.Item2 }
+            }).OrderBy(_ => _.label);
+
+            
             return JsonConvert.SerializeObject(new
             {
-                type = "scatter",
+                type = "bar",
                 data = new
                 {
-                    datasets = new[]
-                    {
-                        new
-                        {
-                            label = "Win Rate by Mana Value",
-                            data = joined,
-                            trendlineLinear = new
-                            {
-                                lineStyle = "solid",
-                                width = 2
-                            }
-                        }
-                    }
+                    labels = new[] {"Average", "Median" },
+                    datasets = data
                 },
                 options = new
                 {
+                    minBarLength = 10,
+                    scales = new
+                    {
+                        x = new
+                        {
+                            title = new
+                            {
+                                display = true,
+                                text = "Mana Value"
+                            }
+                        },
+                        y = new
+                        {
+                            beginAtZero = false,
+                            min = 50,
+                            max = 60,
+                            title = new
+                            {
+                                display = true,
+                                text = "Win Rate"
+                            }
+                        }
+                    },
+
+                    plugins = new
+                    {
+                        title = new
+                        {
+                            display = true,
+                            text = "Limited Win Rate By Mana Value",
+                            font = new
+                            {
+                                weight = "bold",
+                                size = 18
+                            }
+                        }
+                    }
                 }
             });
         }
 
-        public string GetWinrateJsonByTextLength(string? setCode)
+        public string GetWinrateJsonByTextLength(string? setCode, bool excludeRares = false)
         {
             var cards = _context.Cards.Where(_ => _.SetCode == setCode);
             var winRates = _context.WinRates.Where(_ => _.Set == setCode);
+
+            if (excludeRares)
+            {
+                winRates = winRates.Where(_ => _.Rarity != "M" && _.Rarity != "R");
+                cards = cards.Where(_ => _.Rarity != "M" && _.Rarity != "R");
+            }
 
             var joined = cards.Join(
                 winRates,
@@ -929,13 +993,52 @@ namespace KnowledgePool.Controllers
                 },
                 options = new
                 {
+                    scales = new
+                    {
+                        x = new
+                        {
+                            title = new
+                            {
+                                display = true,
+                                text = "Rules Text Length"
+                            }
+                        },
+
+                        y = new
+                        {
+                            title = new
+                            {
+                                display = true,
+                                text = "Win Rate"
+                            }
+                        }
+                    },
+
+                    plugins = new
+                    {
+                        title = new
+                        {
+                            display = true,
+                            text = "Limited Win Rate by Rules Text Length",
+                            font = new
+                            {
+                                weight = "bold",
+                                size = 18
+                            }
+                        }
+                    }
                 }
             });
         }
 
-        public string GetWinrateJsonByColor(string setCode)
+        public string GetWinrateJsonByColor(string setCode, bool excludeRares = false)
         {
             var winRates = _context.WinRates.Where(_ => _.Set == setCode && _.GihWr != null);
+
+            if (excludeRares)
+            {
+                winRates = winRates.Where(_ => _.Rarity != "M" && _.Rarity != "R");
+            }
 
             var wrAvgs = new Dictionary<string, decimal>();
             var wrMeds = new Dictionary<string, decimal>();
@@ -1037,19 +1140,45 @@ namespace KnowledgePool.Controllers
                 },
                 options = new
                 {
-                    //indexAxis = "y",
                     minBarLength = 10,
                     scales = new
                     {
+                        x = new
+                        {
+                            title = new
+                            {
+                                display = true,
+                                text = "Color"
+                            }
+                        },
                         y = new
                         {
-                            beginAtZero = false
+                            beginAtZero = false,
+                            min = 50,
+                            max = 60,
+                            title = new
+                            {
+                                display = true,
+                                text = "Win Rate"
+                            }
+                        }
+                    },
+
+                    plugins = new
+                    {
+                        title = new
+                        {
+                            display = true,
+                            text = "Limited Win Rate by Color",
+                            font = new
+                            {
+                                weight = "bold",
+                                size = 18
+                            }
                         }
                     }
                 }
             });
-
-            return string.Empty;
         }
 
         #endregion
