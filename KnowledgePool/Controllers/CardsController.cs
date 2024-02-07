@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using KnowledgePool.Models;
+using KnowledgePool.Models.OtherModels;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace KnowledgePool.Controllers
 {
@@ -157,6 +160,46 @@ namespace KnowledgePool.Controllers
         private bool CardExists(string id)
         {
           return (_context.Cards?.Any(e => e.Uuid == id)).GetValueOrDefault();
+        }
+
+        public ActionResult UpdateDatabase(FileUpload upload)
+        {
+            if (upload.File != null && upload.File.FileName.EndsWith(".json"))
+            {
+                var setCode = upload.File.FileName.Substring(0, 3);
+
+                var lines = new List<string>();
+                using (var reader = new StreamReader(upload.File.OpenReadStream()))
+                {
+                    while (reader.Peek() >= 0)
+                        lines.Add(reader.ReadLine());
+                }
+
+                var fullString = string.Join(' ', lines);
+
+                try
+                {
+                    //var result = JsonConvert.DeserializeObject<SetJson>(fullString);
+                    var jObject = JObject.Parse(fullString);
+                    var setJson = jObject["data"];
+                    var cardsJson = setJson["cards"] as JArray;
+
+                    var set = new Set(setJson);
+
+                    var cards = cardsJson.Select(_ => new Card(_));
+
+                    _context.AddRange(cards);
+                    _context.Add(set);
+                    _context.SaveChanges();
+                }
+
+                catch (Exception ex) 
+                {
+                    Console.WriteLine(ex.ToString());
+                }
+            }
+
+            return RedirectToAction(nameof(Index));
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -164,4 +165,115 @@ public partial class Card
     public string? Variations { get; set; }
 
     public string? Watermark { get; set; }
+
+    public Card() { }
+
+    public Card(JToken jToken)
+    {
+        Artist = jToken["artist"]?.ToString();
+        AsciiName = jToken["asciiName"]?.ToString();
+        AttractionLights = jToken["attractionLights"]?.ToString();
+        BorderColor = jToken["borderColor"]?.ToString();
+        CardParts = jToken["cardParts"]?.ToString();
+        ColorIndicator = jToken["colorIndicator"]?.ToString();
+        Defense = jToken["defense"]?.ToString();
+        DuelDeck = jToken["duelDeck"]?.ToString();
+        EdhrecRank = jToken["edhrecRank"]?.Value<long?>();
+        EdhrecSaltiness = jToken["edhrecSaltiness"]?.Value<double?>();
+        FaceConvertedManaCost = jToken["faceConvertedManaCost"]?.Value<double?>();
+        FaceFlavorName = jToken["faceFlavorName"]?.ToString();
+        FaceManaValue = jToken["faceManaValue"]?.Value<double?>();
+        FaceName = jToken["faceName"]?.ToString();
+        FlavorName = jToken["flavorName"]?.ToString();
+        FlavorText = jToken["flavorText"]?.ToString();
+        FrameVersion = jToken["frameVersion"]?.ToString();
+        Hand = jToken["hand"]?.ToString();
+        HasAlternativeDeckLimit = jToken?["hasAlternativeDeckLimit"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        HasContentWarning = jToken?["hasContentWarning"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        HasFoil = jToken?["hasFoil"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        HasNonFoil = jToken?["hasNonFoil"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsAlternative = jToken?["isAlternative"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsFullArt = jToken?["isFullArt"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsFunny = jToken?["isFunny"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsOnlineOnly = jToken?["isOnlineOnly"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsOversized = jToken?["isOversized"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsPromo = jToken?["isPromo"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsRebalanced = jToken?["isRebalanced"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsReprint = jToken?["isReprint"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsReserved = jToken?["isReserved"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsStarter = jToken?["isStarter"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsStorySpotlight = jToken?["isStorySpotlight"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsTextless = jToken?["isTextless"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        IsTimeshifted = jToken?["isTimeshifted"]?.Value<bool>() ?? false ? new byte[] { 1 } : new byte[] { 0 };
+        Language = jToken["language"]?.ToString();
+        Layout = jToken["layout"]?.ToString();
+        Life = jToken["life"]?.ToString();
+        Loyalty = jToken["loyalty"]?.ToString();
+        ManaCost = jToken["manaCost"]?.ToString();
+        ManaValue = jToken["manaValue"]?.Value<double?>();
+        Name = jToken["name"]?.ToString();
+        Number = jToken["number"]?.ToString();
+        OriginalPrintings = jToken["originalPrintings"]?.ToString();
+        OriginalReleaseDate = jToken["originalReleaseDate"]?.ToString();
+        OriginalText = jToken["originalText"]?.ToString();
+        OriginalType = jToken["originalType"]?.ToString();
+        OtherFaceIds = jToken["otherFaceIds"]?.ToString();
+        Power = jToken["power"]?.ToString();
+        Rarity = jToken["rarity"]?.ToString();
+        RebalancedPrintings = jToken["rebalancedPrintings"]?.ToString();
+        RelatedCards = jToken["relatedCards"]?.ToString();
+        SecurityStamp = jToken["securityStamp"]?.ToString();
+        SetCode = jToken["setCode"]?.ToString();
+        Side = jToken["side"]?.ToString();
+        Signature = jToken["signature"]?.ToString();
+        SourceProducts = jToken["sourceProducts"]?.ToString();
+        Subsets = jToken["subsets"]?.ToString();
+        Text = jToken["text"]?.ToString();
+        Toughness = jToken["toughness"]?.ToString();
+        Type = jToken["type"]?.ToString() ?? throw new ArgumentException("Type is required", nameof(jToken));
+        Uuid = jToken["uuid"]?.ToString() ?? throw new ArgumentException("Uuid is required", nameof(jToken));
+        Watermark = jToken["watermark"]?.ToString();
+
+        var artistIds = jToken["artistIds"]?.Values<string>().ToList();
+        if (artistIds is not null) ArtistIds = string.Join(", ", artistIds);
+
+        var availability = jToken["availability"]?.Values<string>().ToList();
+        if (availability is not null) Availability = string.Join(", ", availability);
+
+        var boosterTypes = jToken["boosterTypes"]?.Values<string>().ToList();
+        if (boosterTypes is not null) BoosterTypes = string.Join(", ", boosterTypes);
+
+        var finishes = jToken["finishes"]?.Values<string>().ToList();
+        if (finishes is not null) Finishes = string.Join(", ", finishes);
+
+        var colorIdentity = jToken["colorIdentity"]?.Values<string>().ToList();
+        if (colorIdentity is not null) ColorIdentity = string.Join(string.Empty, colorIdentity);
+
+        var colors = jToken["colors"]?.Values<string>().ToList();
+        if (colors is not null) Colors = string.Join(string.Empty, colors);
+
+        var frameEffects = jToken["frameEffects"]?.Values<string>().ToList();
+        if (frameEffects is not null) FrameEffects = string.Join(", ", frameEffects);
+
+        var keywords = jToken["keywords"]?.Values<string>().ToList();
+        if (keywords is not null) Keywords = string.Join(", ", keywords);
+
+        var printings = jToken["printings"]?.Values<string>().ToList();
+        if (printings is not null) Printings = string.Join(", ", printings);
+
+        var promoTypes = jToken["promoTypes"]?.Values<string>().ToList();
+        if (promoTypes is not null) PromoTypes = string.Join(", ", promoTypes);
+
+        var subtypes = jToken["subtypes"]?.Values<string>().ToList();
+        if (subtypes is not null) Subtypes = string.Join(", ", subtypes);
+
+        var supertypes = jToken["supertypes"]?.Values<string>().ToList();
+        if (supertypes is not null) Supertypes = string.Join(", ", supertypes);
+
+        var types = jToken["types"]?.Values<string>().ToList();
+        if (types is not null) Types = string.Join(", ", types);
+
+        var variations = jToken["variations"]?.Values<string>().ToList();
+        if (variations is not null) Variations = string.Join(", ", variations);
+    }
 }
