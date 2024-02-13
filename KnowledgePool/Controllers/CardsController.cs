@@ -162,12 +162,15 @@ namespace KnowledgePool.Controllers
           return (_context.Cards?.Any(e => e.Uuid == id)).GetValueOrDefault();
         }
 
+
+        //endpoint to update the database with new cards. takes a json file sourced from mtgjson.com
         public ActionResult UpdateDatabase(FileUpload upload)
         {
             if (upload.File != null && upload.File.FileName.EndsWith(".json"))
             {
                 var setCode = upload.File.FileName.Substring(0, 3);
 
+                //read file
                 var lines = new List<string>();
                 using (var reader = new StreamReader(upload.File.OpenReadStream()))
                 {
@@ -177,9 +180,9 @@ namespace KnowledgePool.Controllers
 
                 var fullString = string.Join(' ', lines);
 
+                //parse JSON into set and card objects
                 try
                 {
-                    //var result = JsonConvert.DeserializeObject<SetJson>(fullString);
                     var jObject = JObject.Parse(fullString);
                     var setJson = jObject["data"];
                     var cardsJson = setJson["cards"] as JArray;

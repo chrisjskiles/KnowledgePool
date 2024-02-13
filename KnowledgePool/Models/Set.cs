@@ -57,6 +57,8 @@ public partial class Set
     public string? Type { get; set; }
 
     public Set() { }
+
+    //constructor to parse json into set object
     public Set(JToken jToken)
     {
         BaseSetSize = jToken["baseSetSize"]?.Value<long>();

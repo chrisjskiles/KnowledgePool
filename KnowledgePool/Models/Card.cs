@@ -168,6 +168,7 @@ public partial class Card
 
     public Card() { }
 
+    //constructor to parse JSON into card object
     public Card(JToken jToken)
     {
         Artist = jToken["artist"]?.ToString();

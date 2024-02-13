@@ -18,15 +18,30 @@ namespace KnowledgePool.Controllers
             _context= context;
         }
 
+        /// <summary>
+        /// fetches creature stat data for 1 or more sets
+        /// </summary>
+        /// <param name="setIds">
+        /// Set codes sent by the view
+        /// </param>
+        /// <param name="dataType">
+        /// Choice of Average or Median
+        /// </param>
+        /// <param name="singleChart">
+        /// Whether or not to display each set as a separate chart
+        /// </param>
+        /// <returns></returns>
         public ActionResult Index(List<string> setIds, string dataType, string singleChart = "false")
         {
             var isSingleChart = singleChart == "true";
             var isAverage = dataType?.Equals("average", StringComparison.OrdinalIgnoreCase) ?? true;
 
+            //get set list for selection box
             var setListSelection = GetSetSelectionList();
 
             var setCodes = setIds;
 
+            //if no set codes were passed in, get the most recent set
             if (!setCodes.Any())
                     setCodes.Add(_context.Sets
                         .Where(_ => _.Type == "expansion" || _.Type == "core" || _.Type == "masters")
@@ -34,14 +49,16 @@ namespace KnowledgePool.Controllers
                         .Select(_ => _.Code)
                         .First());
 
+            //source data for the charts
             var powerData = new Dictionary<string, string>();
             var toughnessData = new Dictionary<string, string>();
-            var scatterData = new Dictionary<string, string>();
+            var bubbleData = new Dictionary<string, string>();
 
             if (!isSingleChart)
             {
                 foreach (var setCode in setCodes)
                 {
+                    //get cards in set then get creatures excluding outliers (0 or variable power and toughness)
                     var cards = _context.Cards.AsEnumerable().Where(_ => _.SetCode == setCode).DistinctBy(_ => _.Name).ToList();
 
                     var creatures = cards
@@ -51,8 +68,10 @@ namespace KnowledgePool.Controllers
                         !_.Toughness.Contains("*") && 
                         !(_.Power == "0" || _.Toughness == "0"));
 
+                    //process creatures into data for the charts
                     var amd = GetAverageMedianDataByColor(creatures);
 
+                    //put data into dictionaries depending on selection of average vs median
                     if (isAverage)
                     {
                         var averagePowers = new Dictionary<string, List<double>>(amd.Select(_ => new KeyValuePair<string, List<double>>
@@ -89,10 +108,11 @@ namespace KnowledgePool.Controllers
                         toughnessData.Add(setCode, GetAverageOrMedianJsonByColor(medianToughnesses, "Toughness", setCode));
                     }
 
-                    scatterData.Add(setCode, GetBubbleJson(setCode));
+                    bubbleData.Add(setCode, GetBubbleJson(setCode));
                 } 
             }
 
+            //slightly different logic if only one set is selected
             else
             {
                 var cards = _context.Cards.AsEnumerable().Where(_ => setCodes.Contains(_.SetCode)).DistinctBy(_ => _.Name).ToList();
@@ -143,22 +163,37 @@ namespace KnowledgePool.Controllers
                 }
             }
 
+
+            //add data to views
             ViewBag.setList = setListSelection;
 
             ViewData["PowerData"] = powerData;
             ViewData["ToughnessData"] = toughnessData;
-            ViewData["ScatterData"] = scatterData;
+            ViewData["ScatterData"] = bubbleData;
 
             return View();
         }
 
+        /// <summary>
+        /// Fetches win rate data for a single set. Multi-set support to be implemented
+        /// </summary>
+        /// <param name="setIds">
+        /// List of ids for sets to fetch. Will only contain a single set currently
+        /// </param>
+        /// <param name="excludeRares">
+        /// whether or not to include rares in the calculations
+        /// </param>
+        /// <returns></returns>
         public ActionResult WinRateData(List<string> setIds, string excludeRares = "false")
         {
+            //get list for set selection
             var setListSelection = GetSetSelectionList();
 
+            //filter out sets that don't have win rate data in the database
             var setsWithWinRateData = _context.WinRates.Select(_ => _.Set).Distinct();
             setListSelection = setListSelection.Where(_ => setsWithWinRateData.Contains(_.Value)).ToList();
 
+            //if no set selected get most recent set
             if (!setIds.Any())
                 setIds.Add(_context.Sets
                     .Where(_ => (_.Type == "expansion" || _.Type == "core" || _.Type == "masters") && setsWithWinRateData.Contains(_.Code))
@@ -166,10 +201,12 @@ namespace KnowledgePool.Controllers
                     .Select(_ => _.Code)
                     .First());
 
+            //get win rates by mana value, text length, and color
             var wrByMv = GetWinrateJsonByManaValue(setIds.First(), excludeRares == "true");
             var wrByLength = GetWinrateJsonByTextLength(setIds.First(), excludeRares == "true");
             var wrByColor = GetWinrateJsonByColor(setIds.First(), excludeRares == "true");
 
+            //add data to the viewbag, viewdata
             ViewBag.setList = setListSelection;
 
             ViewData["WinRateByMv"] = wrByMv;
@@ -181,6 +218,18 @@ namespace KnowledgePool.Controllers
 
         #region Helper Methods
 
+        /// <summary>
+        /// Gets average and median power and toughness for each set in setCodes, sorted by mana value
+        /// </summary>
+        /// <param name="creatures">
+        /// list of all creatures
+        /// </param>
+        /// <param name="setCodes">
+        /// list of sets to fetch data for
+        /// </param>
+        /// <returns>
+        /// Dictionary where the key is the set code and the value is the associated data as defined by the custom object type AverageMedianData
+        /// </returns>
         public Dictionary<string, AverageMedianData> GetAverageMedianDataBySet(IEnumerable<Card> creatures, List<string> setCodes)
         {
             var data = new Dictionary<string, AverageMedianData>();
@@ -190,6 +239,7 @@ namespace KnowledgePool.Controllers
                 var powerValues = new List<KeyValuePair<int, int>>();
                 var toughnessValues = new List<KeyValuePair<int, int>>();
 
+                //get each power and each toughness with key as the mana value and value as the power or toughness
                 powerValues = creatures
                     .Where(_ => _.SetCode == code)
                     .Select(_ => new KeyValuePair<int, int>(
@@ -210,11 +260,13 @@ namespace KnowledgePool.Controllers
                 var toughnessAverages = new List<double>();
                 var toughnessMedians = new List<int>();
 
+                //for each mana value, grouping all value >=7 as one
                 foreach (var mv in new List<int>(Enumerable.Range(0, 8)))
                 {
                     var powerValuesByMv = new List<int>();
                     var toughnessValuesByMv = new List<int>();
 
+                    //group all powers/toughnesses 7 or more into one 
                     if (mv == 7)
                     {
                         powerValuesByMv = powerValues
@@ -245,6 +297,7 @@ namespace KnowledgePool.Controllers
                             .ToList();
                     }
 
+                    //calculate averages and medians
                     if (powerValuesByMv.Any())
                     {
                         powerAverages.Add(powerValuesByMv.Average());
@@ -254,6 +307,7 @@ namespace KnowledgePool.Controllers
                         toughnessMedians.Add(toughnessValuesByMv.ElementAt(toughnessValuesByMv.Count() / 2));
                     }
 
+                    //if there is no data (e.g. no creatures with mv=0) avg/median=0
                     else
                     {
                         powerAverages.Add(0);
@@ -264,6 +318,7 @@ namespace KnowledgePool.Controllers
                     }
                 }
 
+                //create and add average/median data
                 var amd = new AverageMedianData
                 {
                     PowerAverages = powerAverages,
@@ -278,15 +333,26 @@ namespace KnowledgePool.Controllers
             return data;
         }
 
+        /// <summary>
+        /// Calculates average and median data for each color, including colorless, multicolored, and all
+        /// </summary>
+        /// <param name="creatures">
+        /// creatures in set
+        /// </param>
+        /// <returns>
+        /// average/median data with key denoting the color corresponding to the data
+        /// </returns>
         public Dictionary<string, AverageMedianData> GetAverageMedianDataByColor(IEnumerable<Card> creatures)
         {
             var data = new Dictionary<string, AverageMedianData>();
 
+            //standard color denotations for mtg plus M for multicolor, C for colorless and O for overall
             foreach (var color in new List<string> { "W", "U", "B", "R", "G", "M", "C", "O"})
             {
                 var powerValues = new List<KeyValuePair<int, int>>();
                 var toughnessValues = new List<KeyValuePair<int, int>>();
 
+                //each case filters the creatures on the appropriate color
                 if (color == "O")
                 {
                     powerValues = creatures
@@ -359,11 +425,13 @@ namespace KnowledgePool.Controllers
                 var toughnessAverages = new List<double>();
                 var toughnessMedians = new List<int>();
 
+                //then sort each p/t by mana value and calculate the average and median
                 foreach (var mv in new List<int>(Enumerable.Range(0, 8))) 
                 {
                     var powerValuesByMv = new List<int>();
                     var toughnessValuesByMv = new List<int>();
 
+                    //group all mvs >= 7 together
                     if (mv == 7)
                     {
                         powerValuesByMv = powerValues
@@ -394,6 +462,7 @@ namespace KnowledgePool.Controllers
                             .ToList();
                     }
 
+                    //calculate average and median
                     if (powerValuesByMv.Any())
                     {
                         powerAverages.Add(powerValuesByMv.Average());
@@ -413,6 +482,7 @@ namespace KnowledgePool.Controllers
                     }
                 }
 
+                //create average/median data and add to dictionary
                 var amd = new AverageMedianData
                 {
                     PowerAverages = powerAverages,
@@ -427,13 +497,21 @@ namespace KnowledgePool.Controllers
             return data;
         }
 
+        /// <summary>
+        /// gets list of sets to populate selection list
+        /// </summary>
+        /// <returns>
+        /// list of select list items with set name and codes
+        /// </returns>
         public List<SelectListItem> GetSetSelectionList()
         {
+            //filter out special sets
             var sets = _context.Sets
                 .Where(_ => _.Type == "expansion" || _.Type == "core" || _.Type == "masters")
                 .OrderByDescending(_ => _.ReleaseDate)
                 .ToList();
 
+            //creates selectlistitems
             var setListSelection = new List<SelectListItem>();
             foreach (var s in sets)
             {
@@ -447,8 +525,16 @@ namespace KnowledgePool.Controllers
 
         #region Json Methods
 
+        /// <summary>
+        /// Gets JSON to populate the chart for data by set
+        /// </summary>
+        /// <typeparam name="T">Used to denote median or average with median being an integer and average being a double</typeparam>
+        /// <param name="data">Data used to generate the JSON</param>
+        /// <param name="PorT">Whether the chart is for power or toughness</param>
+        /// <returns></returns>
         public string GetAverageOrMedianJsonBySet<T>(Dictionary<string, List<T>> data, string PorT)
         {
+            //determine whether the label should be average or median based on type argument
             var labelType = typeof(T) == typeof(double) ? "Average" : "Median";
 
             return JsonConvert.SerializeObject(new
@@ -503,6 +589,14 @@ namespace KnowledgePool.Controllers
             });
         }
 
+        /// <summary>
+        /// Gets JSON to populate the chart for data by Color
+        /// </summary>
+        /// <typeparam name="T">Type argument denoting whether the data is for median or average</typeparam>
+        /// <param name="data">Data used to generate the JSON</param>
+        /// <param name="PorT">Whether the chart is for Power or Toughness</param>
+        /// <param name="setCode">Code for the set the data is for</param>
+        /// <returns></returns>
         public string GetAverageOrMedianJsonByColor<T>(Dictionary<string, List<T>> data, string PorT, string setCode)
         {
             var labelType = typeof(T) == typeof(double) ? "Average" : "Median";
@@ -630,20 +724,28 @@ namespace KnowledgePool.Controllers
             });
         }
 
+        /// <summary>
+        /// Generates data and creates associated JSON to create a bubble chart showing the quantity of each power/toughness combination
+        /// </summary>
+        /// <param name="setCode">Code for the set the data should be generated for</param>
+        /// <returns>Chart JSON for bubble chart</returns>
         public string GetBubbleJson(string? setCode)
         {
+            //get most recent set if code is null
             if (setCode is null) setCode = _context.Sets.Where(_ => _.Type == "expansion" || _.Type == "core").OrderByDescending(_ => _.ReleaseDate).Select(_ => _.Code).First();
 
             var setName = _context.Sets.First(_ => _.Code == setCode).Name;
 
+            //get all creatures in the set filtering out non-numerical values
             var creatures = _context.Cards
                 .Where(_ => _.SetCode == setCode && EF.Functions.Like(_.Type, "%creature%") && !EF.Functions.Like(_.Power, "%*%") && !EF.Functions.Like(_.Toughness, "%*%"));
 
-            var creaturesDict = new Dictionary<string, List<ScatterDataPoint>>();
+            var creaturesDict = new Dictionary<string, List<BubbleDataPoint>>();
 
+            //group creatures into points for the bubble plot
             var creaturesAll = creatures
                 .GroupBy(_ => new { _.Power, _.Toughness })
-                .Select(_ => new ScatterDataPoint
+                .Select(_ => new BubbleDataPoint
                 {
                     x = _.Key.Power,
                     y = _.Key.Toughness,
@@ -653,6 +755,7 @@ namespace KnowledgePool.Controllers
 
             creaturesDict.Add("O", creaturesAll);
 
+            //group data points by color
             foreach (var color in new List<string> { "W", "U", "B", "R", "G", "M", "C" })
             {
                 if (color == "M")
@@ -660,7 +763,7 @@ namespace KnowledgePool.Controllers
                     var creatureData = creatures
                         .Where(_ => _.Colors.Length > 1)
                         .GroupBy(_ => new { _.Power, _.Toughness })
-                        .Select(_ => new ScatterDataPoint
+                        .Select(_ => new BubbleDataPoint
                         {
                             x = _.Key.Power,
                             y = _.Key.Toughness,
@@ -676,7 +779,7 @@ namespace KnowledgePool.Controllers
                     var creatureData = creatures
                         .Where(_ => _.Colors == string.Empty)
                         .GroupBy(_ => new { _.Power, _.Toughness })
-                        .Select(_ => new ScatterDataPoint
+                        .Select(_ => new BubbleDataPoint
                         {
                             x = _.Key.Power,
                             y = _.Key.Toughness,
@@ -692,7 +795,7 @@ namespace KnowledgePool.Controllers
                     var creatureData = creatures
                         .Where(_ => _.Colors == color)
                         .GroupBy(_ => new { _.Power, _.Toughness })
-                        .Select(_ => new ScatterDataPoint
+                        .Select(_ => new BubbleDataPoint
                         {
                             x = _.Key.Power,
                             y = _.Key.Toughness,
@@ -704,7 +807,7 @@ namespace KnowledgePool.Controllers
                 }
             }
 
-
+            //create json
             return JsonConvert.SerializeObject(new
             {
                 type = "bubble",
@@ -949,17 +1052,26 @@ namespace KnowledgePool.Controllers
             });
         }
 
+        /// <summary>
+        /// Generates data and associated JSON for win rate data by text length
+        /// </summary>
+        /// <param name="setCode">Code for the set data should be generated for</param>
+        /// <param name="excludeRares">Whether or not to include rares and mythics in the calculation</param>
+        /// <returns></returns>
         public string GetWinrateJsonByTextLength(string? setCode, bool excludeRares = false)
         {
+            //get cards and win rates
             var cards = _context.Cards.Where(_ => _.SetCode == setCode);
             var winRates = _context.WinRates.Where(_ => _.Set == setCode);
 
+            //filter out rares if needed
             if (excludeRares)
             {
                 winRates = winRates.Where(_ => _.Rarity != "M" && _.Rarity != "R");
                 cards = cards.Where(_ => _.Rarity != "M" && _.Rarity != "R");
             }
 
+            //join cards table and win rates table
             var joined = cards.Join(
                 winRates,
                 card => card.Uuid,
@@ -972,6 +1084,7 @@ namespace KnowledgePool.Controllers
                 .Where(_ => _.y != null)
                 .ToList();
 
+            //generate and return json string
             return JsonConvert.SerializeObject(new
             {
                 type = "scatter",
@@ -1031,10 +1144,18 @@ namespace KnowledgePool.Controllers
             });
         }
 
+        /// <summary>
+        /// Generates data and associated JSON by card color
+        /// </summary>
+        /// <param name="setCode">Code of the set the data should be generated for</param>
+        /// <param name="excludeRares">Whether or not to exclude rares from the calculation</param>
+        /// <returns>JSON string to populat chart</returns>
         public string GetWinrateJsonByColor(string setCode, bool excludeRares = false)
         {
+            //get win rates
             var winRates = _context.WinRates.Where(_ => _.Set == setCode && _.GihWr != null);
 
+            //exclude rares if needed
             if (excludeRares)
             {
                 winRates = winRates.Where(_ => _.Rarity != "M" && _.Rarity != "R");
@@ -1043,6 +1164,7 @@ namespace KnowledgePool.Controllers
             var wrAvgs = new Dictionary<string, decimal>();
             var wrMeds = new Dictionary<string, decimal>();
 
+            //calculate averages and medians for each color
             foreach (var color in new List<string>() { "W", "U", "B", "R", "G", "M", "C", "O"})
             {
                 var wrs = new List<decimal>();
@@ -1065,6 +1187,7 @@ namespace KnowledgePool.Controllers
                 wrMeds.Add(color, wrs.ElementAt(wrs.Count / 2));
             }
 
+            //generate and return JSON string
             return JsonConvert.SerializeObject(new
             {
                 type = "bar",
@@ -1186,13 +1309,15 @@ namespace KnowledgePool.Controllers
 
     #region Helper Classes
 
-    public class ScatterDataPoint
+    //represents point for bubble data
+    public class BubbleDataPoint
     {
         public string? x { get; set; }
         public string? y { get; set; }
         public int r { get; set; }
     }
 
+    //holds list of average and median data for power and toughness
     public class AverageMedianData
     {
         public IEnumerable<int>? PowerMedians { get; set; }
@@ -1201,6 +1326,7 @@ namespace KnowledgePool.Controllers
         public IEnumerable<double>? ToughnessAverages { get; set; }
     }
 
+    //chart colors
     public static class Colors
     {
         public const string White = "#E0E84A";
