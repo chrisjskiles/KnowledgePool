@@ -162,6 +162,8 @@ namespace KnowledgePool.Controllers
           return (_context.WinRates?.Any(e => e.Uuid == id)).GetValueOrDefault();
         }
 
+        //takes a csv file containing card win rates named [set code].csv and adds them to the database
+        //to do: allow for updating the database
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadWinRates(FileUpload upload)
@@ -202,6 +204,7 @@ namespace KnowledgePool.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        //takes win rate given as string in the format xx.x% and converts it to a decimal
         public decimal? ConvertRate(string value, int endOfInput)
         {
             if (value.Length < 4) return null;
@@ -209,18 +212,24 @@ namespace KnowledgePool.Controllers
             else return Convert.ToDecimal(value.Substring(0, value.Length - endOfInput));
         }
 
+        //get the id for a card with the given set, defaults to first id if the card doesn't have a set (cards on The List)
         public string GetUuid(string cardName, string setCode)
         {
             try
             {
                 var bonusSheetCode = _context.Sets.Any(_ => _.ParentCode == setCode && _.Type == "masterpiece") ? _context.Sets.First(_ => _.ParentCode == setCode && _.Type == "masterpiece").Code : string.Empty;
-                return _context.Cards.First(_ => 
+
+                return 
+                    _context.Cards.FirstOrDefault(_ => 
                     _.Name.StartsWith(cardName) && 
                     ((_.SetCode == setCode && _.PromoTypes == null) || 
                     _.SetCode == bonusSheetCode))
-                    .Uuid;
+                    ?.Uuid 
+                    ?? _context.Cards.First(_ => _.Name.StartsWith(cardName)).Uuid;
 
             }
+
+            //TODO: handle exception
             catch (Exception e)
             {
                 throw;

@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-trendline"></script>
     <script type="text/javascript">
+        //get chart data and create charts
         const wrByMvChart = document.getElementById('winRateByMv');
         const wrByMvChartJson = JSON.parse('@Html.Raw(ViewData["WinRateByMv"])');
         new Chart(wrByMvChart, wrByMvChartJson);
@@ -19,27 +20,33 @@
         const wrByColorChartJson = JSON.parse('@Html.Raw(ViewData["WinRateByColor"])');
         new Chart(wrByColorChart, wrByColorChartJson);
 
+        //creates set search button when one is selected from the data list
         function addSearch(setInput) {
+            //get all options from data list
             const opts = Array.from(document.getElementById("setList").children);
 
+            //get all existing set buttons
             const searchedSets = document.getElementById('searchedSets');
             const existingButtons = Array.from(searchedSets.children, ({ textContent }) => textContent);
 
-            //creates a button for each searched set
+            //creates a button for a searched set if it doesn't already exist
             if (!existingButtons.includes(setInput)) {
                 opts.forEach((opt) => {
                     if (opt.value == setInput) {
+                        //create button
                         const setButton = document.createElement('button');
                         setButton.innerText = setInput;
                         setButton.setAttribute('id', opt.textContent);
                         setButton.classList.add('set-button');
 
+                        //create hidden input so that we can send the value as a query string when the form is submitted
                         const hiddenInput = document.createElement('input');
                         hiddenInput.setAttribute('id', opt.textContent + "_input");
                         hiddenInput.setAttribute('value', opt.textContent);
                         hiddenInput.setAttribute('name', 'setIds');
                         hiddenInput.style = 'display:none';
 
+                        //add even listener to delete the button when it is clicked
                         setButton.addEventListener('click', function () {
                             searchedSets.removeChild(setButton);
 
@@ -49,6 +56,7 @@
                             saveSearchToStorage();
                         });
 
+                        //add the new elements to the div that contains them
                         searchedSets.appendChild(setButton);
                         searchedSets.appendChild(hiddenInput);
                         saveSearchToStorage();
@@ -56,6 +64,7 @@
                 });
             }
 
+            //reset the input for new set selection
             document.getElementById('set').value = '';
         }
     </script>
@@ -89,6 +98,7 @@
     }
 </p>
 
+<!--Canvases to hold the charts-->
 <canvas id="winRateByMv"></canvas>
 
 <canvas id="winRateByColor"></canvas>
