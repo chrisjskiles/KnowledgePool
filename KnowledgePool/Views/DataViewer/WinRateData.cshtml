@@ -59,13 +59,13 @@
                         //add the new elements to the div that contains them
                         searchedSets.appendChild(setButton);
                         searchedSets.appendChild(hiddenInput);
-                        saveSearchToStorage();
+                        //saveSearchToStorage();
+
+                        //reset the input for new set selection
+                        document.getElementById('set').value = '';
                     }
                 });
             }
-
-            //reset the input for new set selection
-            document.getElementById('set').value = '';
         }
     </script>
 }

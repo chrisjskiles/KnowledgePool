@@ -118,11 +118,12 @@
                         searchedSets.appendChild(setButton);
                         searchedSets.appendChild(hiddenInput);
                         saveSearchToStorage();
+
+                        document.getElementById('set').value = '';
+
                     }
                 });
             }
-
-            document.getElementById('set').value = '';    
         }
 
         //save all searched terms to session storage
